@@ -78,7 +78,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def post_init(application: Application) -> None:
     """
-    Post-initialization function to set bot commands.
+    Post-initialization function to set bot commands and start cleanup scheduler.
     
     Args:
         application: Telegram application object
@@ -98,6 +98,10 @@ async def post_init(application: Application) -> None:
     
     await application.bot.set_my_commands(commands)
     logger.info("Bot commands set successfully")
+    
+    # Start cleanup scheduler
+    asyncio.create_task(cleanup_scheduler())
+    logger.info("Cleanup scheduler started")
 
 
 def main() -> None:
@@ -153,15 +157,6 @@ def main() -> None:
     
     # Error handler
     application.add_error_handler(error_handler)
-    
-    # Create cleanup task
-    async def startup_cleanup():
-        """Start the cleanup scheduler on bot startup."""
-        asyncio.create_task(cleanup_scheduler())
-        logger.info("Cleanup scheduler started")
-    
-    # Schedule cleanup task
-    application.post_init = startup_cleanup
     
     # Start the bot
     logger.info("Bot is starting... Press Ctrl+C to stop.")
