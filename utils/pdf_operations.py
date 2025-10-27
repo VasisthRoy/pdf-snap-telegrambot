@@ -224,6 +224,7 @@ class PDFOperations:
     ) -> List[Path]:
         """
         Convert PDF pages to individual image files.
+        Optimized for faster conversion on limited resources.
         
         Args:
             pdf_path: Path to source PDF
@@ -242,11 +243,14 @@ class PDFOperations:
         output_dir.mkdir(parents=True, exist_ok=True)
         
         try:
-            # Convert PDF to images
+            # Convert PDF to images with optimized settings
+            # Reduced DPI from 200 to 150 for faster processing (still good quality)
+            # Added thread_count for multi-threaded conversion
             images = convert_from_path(
                 str(pdf_path),
-                dpi=200,  # Good balance between quality and file size
-                fmt=format.lower()
+                dpi=150,  # Reduced for faster processing while maintaining quality
+                fmt=format.lower(),
+                thread_count=2  # Use 2 threads for faster processing
             )
             
             image_paths = []
@@ -254,7 +258,13 @@ class PDFOperations:
             # Save each page as separate image
             for i, image in enumerate(images, start=1):
                 image_path = output_dir / f"page_{i:03d}.{format.lower()}"
-                image.save(str(image_path), format.upper())
+                
+                # For JPEG, use quality setting to balance size/quality
+                if format.upper() == "JPEG":
+                    image.save(str(image_path), format.upper(), quality=85, optimize=True)
+                else:
+                    image.save(str(image_path), format.upper(), optimize=True)
+                
                 image_paths.append(image_path)
             
             return image_paths

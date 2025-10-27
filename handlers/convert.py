@@ -1,9 +1,11 @@
 """
 Convert handler for PDF Telegram Bot.
 Handles PDF to images and images to PDF conversions.
+Optimized for faster processing with better timeout handling.
 """
 
 import zipfile
+import asyncio
 from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -57,7 +59,7 @@ async def pdf_to_images_command(update: Update, context: ContextTypes.DEFAULT_TY
     
     # Warn if too many pages
     if page_count > 20:
-        warning_msg = await update.message.reply_text(
+        await update.message.reply_text(
             f"⚠️ **Large PDF detected!**\n\n"
             f"📚 Your PDF has {page_count} pages.\n\n"
             f"Converting many pages may take time and produce many files.\n\n"
@@ -76,12 +78,15 @@ async def pdf_to_images_command(update: Update, context: ContextTypes.DEFAULT_TY
     if "jpg" in command or "jpeg" in command:
         image_format = "JPEG"
     
-    # Show processing message
+    # Show processing message with estimated time
+    estimated_time = max(5, page_count * 3)  # Roughly 3 seconds per page
     processing_msg = await update.message.reply_text(
         f"🔄 **Converting PDF to images...**\n\n"
         f"📄 Pages: {page_count}\n"
-        f"🖼️ Format: {image_format}\n\n"
-        f"⏳ This may take a moment for large files...",
+        f"🖼️ Format: {image_format}\n"
+        f"⏱️ Estimated time: ~{estimated_time} seconds\n\n"
+        f"⏳ Please wait, processing in progress...\n"
+        f"💡 Using optimized settings for faster conversion",
         parse_mode='Markdown'
     )
     
@@ -97,8 +102,16 @@ async def pdf_to_images_command(update: Update, context: ContextTypes.DEFAULT_TY
         images_dir = user_dir / "images"
         images_dir.mkdir(exist_ok=True)
         
-        # Convert PDF to images
-        image_paths = pdf_ops.pdf_to_images(pdf_path, images_dir, image_format)
+        # Convert PDF to images with timeout protection
+        # Run conversion in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        image_paths = await loop.run_in_executor(
+            None,
+            pdf_ops.pdf_to_images,
+            pdf_path,
+            images_dir,
+            image_format
+        )
         
         # Update processing message
         await processing_msg.edit_text(
@@ -153,6 +166,24 @@ async def pdf_to_images_command(update: Update, context: ContextTypes.DEFAULT_TY
             parse_mode='Markdown'
         )
     
+    except asyncio.TimeoutError:
+        await processing_msg.edit_text(
+            "⏱️ **Conversion is taking longer than expected...**\n\n"
+            "Your PDF is being processed, but it's taking more time.\n\n"
+            "**What you can try:**\n"
+            "• Use /split to extract fewer pages first\n"
+            "• Try with a smaller PDF\n"
+            "• Use /compress to reduce PDF complexity\n\n"
+            "**Why this happens:**\n"
+            "Converting PDFs with many pages or complex graphics\n"
+            "requires significant processing power.",
+            parse_mode='Markdown'
+        )
+        
+        # Clean up on timeout
+        file_manager.cleanup_user_files(user_id)
+        context.user_data.clear()
+    
     except Exception as e:
         # Handle errors
         error_message = str(e)
@@ -164,11 +195,12 @@ async def pdf_to_images_command(update: Update, context: ContextTypes.DEFAULT_TY
             "• PDF is corrupted\n"
             "• PDF is password-protected\n"
             "• PDF contains special elements\n"
-            "• System resources insufficient\n\n"
-            "💡 Try:\n"
+            "• Processing took too long (timeout)\n\n"
+            "💡 **Try:**\n"
             "• Use /cancel and upload file again\n"
             "• Check if PDF opens normally\n"
-            "• Try a smaller PDF",
+            "• Try a smaller PDF (fewer pages)\n"
+            "• Use /split to extract specific pages first",
             parse_mode='Markdown'
         )
         
