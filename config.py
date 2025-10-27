@@ -41,7 +41,7 @@ SUPPORTED_PDF_FORMAT: Final[str] = '.pdf'
 BOT_NAME: Final[str] = "PDF Tools Bot"
 BOT_VERSION: Final[str] = "1.0.0"
 BOT_DESCRIPTION: Final[str] = "Free PDF manipulation tools in Telegram"
-DEVELOPER: Final[str] = "Your Name"
+DEVELOPER: Final[str] = "Vasisth Roy"
 GITHUB_REPO: Final[str] = "https://github.com/yourusername/pdf-telegram-bot"
 
 # Feature Flags

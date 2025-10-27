@@ -304,8 +304,6 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 **👨‍💻 Developer:**
 {bot_info['developer']}
 
-**📂 Source Code:**
-{bot_info['repo']}
 
 **🐛 Report Issues:**
 Found a bug? Have suggestions?
