@@ -187,86 +187,95 @@ class PDFOperations:
         try:
             # Determine quality level based on target
             if target['type'] == 'quality':
+                # Simple quality-based compression
                 quality_level = target['value']
-            elif target['type'] == 'percentage':
-                # Map percentage to quality level
-                percent = target['value']
-                if percent <= 40:
-                    quality_level = 'low'
-                elif percent <= 70:
-                    quality_level = 'default'
-                else:
-                    quality_level = 'high'
-            else:  # size target
-                # Estimate quality based on target size ratio
-                target_mb = target['value']
-                ratio = target_mb / original_size
-                if ratio <= 0.4:
-                    quality_level = 'low'
-                elif ratio <= 0.7:
-                    quality_level = 'default'
-                else:
-                    quality_level = 'high'
+                return PDFOperations.compress_pdf(pdf_path, output_path, quality_level)
             
-            # Try multiple compression passes if needed
+            # For percentage or size targets, try progressively lower quality levels
+            quality_levels = ['high', 'default', 'low']
             best_result = None
-            quality_levels = ['low', 'default', 'high']
             
-            # Start with determined quality level
-            start_idx = quality_levels.index(quality_level)
+            # Calculate target size in MB
+            if target['type'] == 'percentage':
+                target_size_mb = original_size * (target['value'] / 100)
+            else:  # size target
+                target_size_mb = target['value']
             
-            for i in range(start_idx, -1, -1):  # Try from selected quality down to low
-                current_quality = quality_levels[i]
-                temp_output = output_path.parent / f"temp_{i}.pdf"
+            print(f"Original size: {original_size:.2f} MB, Target: {target_size_mb:.2f} MB")
+            
+            # Try each quality level until we meet or exceed the target
+            for quality in quality_levels:
+                temp_output = output_path.parent / f"temp_{quality}.pdf"
                 
                 try:
-                    # Compress with current quality
+                    print(f"Trying compression with quality: {quality}")
                     success, orig_size, comp_size = PDFOperations.compress_pdf(
                         pdf_path,
                         temp_output,
-                        current_quality
+                        quality
                     )
                     
+                    print(f"Result: {comp_size:.2f} MB with {quality} quality")
+                    
                     if success and temp_output.exists():
-                        # Check if target is met
-                        if target['type'] == 'percentage':
-                            target_size = original_size * (target['value'] / 100)
-                            if comp_size <= target_size * 1.1:  # Within 10% tolerance
-                                # Target met
-                                best_result = (temp_output, comp_size)
-                                break
-                        elif target['type'] == 'size':
-                            if comp_size <= target['value'] * 1.1:  # Within 10% tolerance
-                                # Target met
-                                best_result = (temp_output, comp_size)
-                                break
+                        # Store first successful result
+                        if best_result is None:
+                            best_result = (temp_output, comp_size, quality)
+                        # Update if this result is better (closer to target)
+                        elif comp_size < best_result[1]:
+                            # Delete previous temp file
+                            if best_result[0].exists():
+                                best_result[0].unlink()
+                            best_result = (temp_output, comp_size, quality)
+                        else:
+                            # This result is worse, delete temp file
+                            if temp_output.exists():
+                                temp_output.unlink()
                         
-                        # Store as best result if better than previous
-                        if best_result is None or comp_size < best_result[1]:
-                            best_result = (temp_output, comp_size)
+                        # Check if we've met the target (within 15% tolerance)
+                        if comp_size <= target_size_mb * 1.15:
+                            print(f"Target met with {quality} quality!")
+                            break
                     
                 except Exception as e:
-                    print(f"Compression with {current_quality} failed: {e}")
+                    print(f"Compression with {quality} failed: {e}")
+                    if temp_output.exists():
+                        temp_output.unlink()
                     continue
             
             # Use best result found
             if best_result:
                 import shutil
-                shutil.move(str(best_result[0]), str(output_path))
+                best_path, best_size, best_quality = best_result
                 
-                # Clean up temp files
-                for i in range(3):
-                    temp_file = output_path.parent / f"temp_{i}.pdf"
-                    if temp_file.exists() and temp_file != best_result[0]:
-                        temp_file.unlink()
+                # Move best result to output path
+                shutil.move(str(best_path), str(output_path))
                 
-                return True, original_size, best_result[1]
+                # Clean up any remaining temp files
+                for quality in quality_levels:
+                    temp_file = output_path.parent / f"temp_{quality}.pdf"
+                    if temp_file.exists():
+                        try:
+                            temp_file.unlink()
+                        except:
+                            pass
+                
+                print(f"Using result from {best_quality} quality: {best_size:.2f} MB")
+                return True, original_size, best_size
             else:
-                # Fall back to standard compression
-                return PDFOperations.compress_pdf(pdf_path, output_path, quality_level)
+                # No successful compression, raise error
+                raise Exception("All compression attempts failed")
         
         except Exception as e:
             print(f"Advanced compression failed: {e}")
+            # Clean up any temp files
+            for quality in ['high', 'default', 'low']:
+                temp_file = output_path.parent / f"temp_{quality}.pdf"
+                if temp_file.exists():
+                    try:
+                        temp_file.unlink()
+                    except:
+                        pass
             raise
     
     @staticmethod

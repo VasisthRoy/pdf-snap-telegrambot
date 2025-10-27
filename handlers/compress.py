@@ -164,17 +164,18 @@ async def compress_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         target_desc = f"Quality: {target['value']}"
     elif target['type'] == 'percentage':
         target_size = original_size * (target['value'] / 100)
-        target_desc = f"{target['value']}% (≈{target_size:.2f} MB)"
+        target_desc = f"{target['value']}% (target: ~{target_size:.2f} MB)"
     else:  # size
-        target_desc = f"{target['value']:.2f} MB"
+        target_desc = f"Target size: {target['value']:.2f} MB"
     
     # Show processing message
     processing_msg = await update.message.reply_text(
         f"🗜️ **Compressing PDF...**\n\n"
-        f"📄 Original: {original_size:.2f} MB\n"
-        f"📚 Pages: {pdf_info['pages']}\n"
-        f"🎯 Target: {target_desc}\n\n"
-        f"⏳ Please wait, this may take a moment...",
+        f"📄 **Before compression:**\n"
+        f"   Size: {original_size:.2f} MB\n"
+        f"   Pages: {pdf_info['pages']}\n\n"
+        f"🎯 **Target:** {target_desc}\n\n"
+        f"⏳ Processing... This may take a moment...",
         parse_mode='Markdown'
     )
     
@@ -199,23 +200,25 @@ async def compress_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # Calculate compression ratio
         if compressed_size_mb > 0:
             compression_ratio = ((original_size_mb - compressed_size_mb) / original_size_mb) * 100
+            size_saved = original_size_mb - compressed_size_mb
         else:
             compression_ratio = 0
+            size_saved = 0
         
         # Determine if compression was effective
         if compressed_size_mb >= original_size_mb * 0.98:  # Less than 2% reduction
             # Compression didn't reduce size significantly
             await processing_msg.edit_text(
-                "ℹ️ **Compression completed, but...**\n\n"
-                f"📄 Original: {original_size_mb:.2f} MB\n"
-                f"📄 After compression: {compressed_size_mb:.2f} MB\n"
-                f"📉 Reduced by: {compression_ratio:.1f}%\n\n"
+                "ℹ️ **Compression completed, but minimal reduction**\n\n"
+                f"📊 **Before:** {original_size_mb:.2f} MB\n"
+                f"📊 **After:** {compressed_size_mb:.2f} MB\n"
+                f"📉 **Reduced by:** {compression_ratio:.1f}% ({size_saved:.2f} MB saved)\n\n"
                 "Your PDF is already well-optimized! ✨\n\n"
-                "**Why this happens:**\n"
+                "**Why minimal compression:**\n"
                 "• PDF already compressed efficiently\n"
-                "• Mostly text (compresses less)\n"
+                "• Mostly text content (compresses less)\n"
                 "• Already using optimal settings\n\n"
-                "I'll send you the best version available.",
+                "Sending you the best version available...",
                 parse_mode='Markdown'
             )
             
@@ -238,21 +241,29 @@ async def compress_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         else:
             # Successful compression
             # Check if target was met
-            target_met = "✅"
+            target_met_emoji = "✅"
+            target_met_text = "Target met!"
+            
             if target['type'] == 'percentage':
                 expected_size = original_size_mb * (target['value'] / 100)
-                if abs(compressed_size_mb - expected_size) > expected_size * 0.1:  # Within 10% tolerance
-                    target_met = "~"
+                diff_percent = abs(compressed_size_mb - expected_size) / expected_size * 100
+                if diff_percent > 15:  # More than 15% off target
+                    target_met_emoji = "~"
+                    target_met_text = "Close to target"
             elif target['type'] == 'size':
-                if abs(compressed_size_mb - target['value']) > target['value'] * 0.1:
-                    target_met = "~"
+                diff_percent = abs(compressed_size_mb - target['value']) / target['value'] * 100
+                if diff_percent > 15:
+                    target_met_emoji = "~"
+                    target_met_text = "Close to target"
             
             await processing_msg.edit_text(
-                f"{target_met} **Compression completed!**\n\n"
-                f"📄 Original: {original_size_mb:.2f} MB\n"
-                f"📄 Compressed: {compressed_size_mb:.2f} MB\n"
-                f"📉 Reduced by: {compression_ratio:.1f}%\n"
-                f"💾 Saved: {(original_size_mb - compressed_size_mb):.2f} MB\n\n"
+                f"{target_met_emoji} **Compression completed successfully!**\n\n"
+                f"📊 **Before compression:** {original_size_mb:.2f} MB\n"
+                f"📊 **After compression:** {compressed_size_mb:.2f} MB\n"
+                f"📉 **Reduced by:** {compression_ratio:.1f}%\n"
+                f"💾 **Space saved:** {size_saved:.2f} MB\n"
+                f"📚 **Pages:** {pdf_info['pages']}\n\n"
+                f"🎯 {target_met_text}\n\n"
                 f"📤 Sending your compressed file...",
                 parse_mode='Markdown'
             )
@@ -262,10 +273,11 @@ async def compress_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 await update.message.reply_document(
                     document=pdf_file,
                     filename="compressed.pdf",
-                    caption=f"✨ Here's your compressed PDF!\n\n"
-                           f"📉 Size reduced by {compression_ratio:.1f}%\n"
+                    caption=f"✨ **Compressed PDF Ready!**\n\n"
+                           f"📉 Reduced by {compression_ratio:.1f}%\n"
                            f"📊 Before: {original_size_mb:.2f} MB\n"
                            f"📊 After: {compressed_size_mb:.2f} MB\n"
+                           f"💾 Saved: {size_saved:.2f} MB\n"
                            f"📚 Pages: {pdf_info['pages']}",
                     parse_mode='Markdown'
                 )
@@ -300,7 +312,8 @@ async def compress_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "• PDF is corrupted\n"
             "• PDF is password-protected\n"
             "• Target size too small to achieve\n"
-            "• PDF has special features that resist compression\n\n"
+            "• PDF has special features that resist compression\n"
+            "• Ghostscript not installed on server\n\n"
             "💡 **Try:**\n"
             "• Use /cancel and upload file again\n"
             "• Check if PDF opens normally\n"
