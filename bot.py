@@ -9,7 +9,7 @@ Features:
 - Convert PDF to images
 - Convert images to PDF
 
-Author: Vasisth Roy
+Author: A Random Dev
 Version: 1.0.0
 """
 
