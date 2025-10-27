@@ -357,9 +357,9 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def daily_stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Handle /stats command - Show bot usage statistics (admin only).
+    Handle /dailystats command - Show daily usage statistics (admin only).
     
     Args:
         update: Telegram update object
@@ -375,49 +375,38 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         return
     
-    # Get statistics
-    stats = analytics.get_statistics()
+    # Get daily statistics
+    stats = analytics.get_daily_statistics()
     
-    # Format today's users
-    today_users_text = ""
-    if stats['today_users']:
-        today_users_text = "\n".join([
-            f"• {user['name']} (@{user['username'] or 'N/A'}) - {user['operations']} ops"
-            for user in stats['today_users']
-        ])
-    else:
-        today_users_text = "No users today yet."
-    
-    # Format all-time top users
+    # Format top 3 users
     top_users_text = ""
-    if stats['top_users']:
+    if stats['top_3_users']:
         top_users_text = "\n".join([
             f"{i+1}. {user['name']} (@{user['username'] or 'N/A'}) - {user['operations']} ops"
-            for i, user in enumerate(stats['top_users'][:10])
+            for i, user in enumerate(stats['top_3_users'])
         ])
     else:
-        top_users_text = "No data yet."
+        top_users_text = "No users yet."
+    
+    # Format recent 10 users
+    recent_users_text = ""
+    if stats['recent_10_users']:
+        recent_users_text = "\n".join([
+            f"• {user['name']} (@{user['username'] or 'N/A'}) - {user['operations']} ops at {user['last_active']}"
+            for user in stats['recent_10_users']
+        ])
+    else:
+        recent_users_text = "No users today yet."
     
     stats_message = f"""
-📊 <b>Bot Usage Statistics</b>
+📊 <b>Daily Usage Statistics</b>
+📅 Date: {stats['date']}
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-<b>📅 TODAY'S STATS</b>
-- Unique Users: {stats['today_unique_users']}
-- Total Operations: {stats['today_operations']}
-
-<b>👥 Today's Users:</b>
-{today_users_text}
-
-━━━━━━━━━━━━━━━━━━━━━
-
-<b>📈 ALL-TIME STATS</b>
-- Total Unique Users: {stats['total_unique_users']}
+<b>📈 TODAY'S OVERVIEW</b>
+- Unique Users: {stats['unique_users']}
 - Total Operations: {stats['total_operations']}
-
-<b>🏆 Top 10 Users:</b>
-{top_users_text}
 
 ━━━━━━━━━━━━━━━━━━━━━
 
@@ -427,6 +416,104 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 - Compress: {stats['operations_by_type'].get('compress', 0)}
 - PDF to Images: {stats['operations_by_type'].get('toimage', 0)}
 - Images to PDF: {stats['operations_by_type'].get('topdf', 0)}
+- Other: {stats['operations_by_type'].get('other', 0)}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>🏆 TOP 3 USERS TODAY</b>
+{top_users_text}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>🕐 RECENT 10 USERS</b>
+{recent_users_text}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+Last updated: {stats['last_updated']}
+"""
+    
+    await update.message.reply_text(
+        stats_message,
+        parse_mode='HTML'
+    )
+
+
+async def weekly_stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handle /weeklystats command - Show weekly usage statistics (admin only).
+    
+    Args:
+        update: Telegram update object
+        context: Telegram context object
+    """
+    user_id = update.effective_user.id
+    
+    # Check if user is admin
+    if user_id not in config.ADMIN_USER_IDS:
+        await update.message.reply_text(
+            "⚠️ This command is only available to bot administrators.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Get weekly statistics
+    stats = analytics.get_weekly_statistics()
+    
+    # Format weekly breakdown
+    weekly_breakdown = ""
+    for week_data in stats['weeks']:
+        # Format top 3 users for this week
+        top_users = "\n".join([
+            f"   {i+1}. {user['name']} (@{user['username'] or 'N/A'}) - {user['operations']} ops"
+            for i, user in enumerate(week_data['top_3_users'][:3])
+        ]) if week_data['top_3_users'] else "   No data"
+        
+        weekly_breakdown += f"""
+<b>Week {week_data['week_number']}</b> ({week_data['date_range']})
+- Unique Users: {week_data['unique_users']}
+- Total Operations: {week_data['total_operations']}
+- Top Operations: {', '.join([f"{k}: {v}" for k, v in list(week_data['operations_by_type'].items())[:3]])}
+
+Top 3 Users:
+{top_users}
+
+"""
+    
+    # Format overall top 3 users
+    overall_top_users = ""
+    if stats['overall_top_3']:
+        overall_top_users = "\n".join([
+            f"{i+1}. {user['name']} (@{user['username'] or 'N/A'}) - {user['operations']} ops"
+            for i, user in enumerate(stats['overall_top_3'])
+        ])
+    else:
+        overall_top_users = "No data yet."
+    
+    stats_message = f"""
+📊 <b>Weekly Usage Statistics</b>
+📅 Month: {stats['month_name']} {stats['year']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>📈 MONTH OVERVIEW</b>
+- Total Unique Users: {stats['total_unique_users']}
+- Total Operations: {stats['total_operations']}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>📅 WEEKLY BREAKDOWN</b>
+
+{weekly_breakdown}
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>🏆 OVERALL TOP 3 USERS (THIS MONTH)</b>
+{overall_top_users}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>🔧 Total Operations by Type:</b>
+{chr(10).join([f"• {k.title()}: {v}" for k, v in stats['total_operations_by_type'].items()])}
 
 ━━━━━━━━━━━━━━━━━━━━━
 

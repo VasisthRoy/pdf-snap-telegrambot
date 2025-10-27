@@ -9,6 +9,7 @@ from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from telegram import User
+import calendar
 
 
 class Analytics:
@@ -135,20 +136,20 @@ class Analytics:
         except Exception as e:
             print(f"Error tracking user: {e}")
     
-    def get_statistics(self) -> dict:
+    def get_daily_statistics(self) -> dict:
         """
-        Get comprehensive statistics.
+        Get daily statistics including unique users, operations, top 3 users, and recent 10 users.
         
         Returns:
-            dict: Statistics including today's users, all-time stats, etc.
+            dict: Daily statistics
         """
         if not self.enabled:
-            return self._empty_stats()
+            return self._empty_daily_stats()
         
         try:
             conn = self._get_connection()
             if not conn:
-                return self._empty_stats()
+                return self._empty_daily_stats()
             
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             today = datetime.now().date()
@@ -159,7 +160,7 @@ class Analytics:
                 FROM operations
                 WHERE DATE(timestamp) = %s
             """, (today,))
-            today_unique_users = cursor.fetchone()['count']
+            unique_users = cursor.fetchone()['count']
             
             # Today's total operations
             cursor.execute("""
@@ -167,84 +168,263 @@ class Analytics:
                 FROM operations
                 WHERE DATE(timestamp) = %s
             """, (today,))
-            today_operations = cursor.fetchone()['count']
-            
-            # Today's users with details
-            cursor.execute("""
-                SELECT u.user_id, u.username, u.first_name, u.last_name, u.total_operations
-                FROM users u
-                WHERE u.last_seen = %s
-                ORDER BY u.total_operations DESC
-            """, (today,))
-            today_users = []
-            for row in cursor.fetchall():
-                today_users.append({
-                    'id': row['user_id'],
-                    'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
-                    'username': row['username'],
-                    'operations': row['total_operations']
-                })
-            
-            # Total unique users
-            cursor.execute("SELECT COUNT(*) as count FROM users")
-            total_unique_users = cursor.fetchone()['count']
-            
-            # Total operations
-            cursor.execute("SELECT COUNT(*) as count FROM operations")
             total_operations = cursor.fetchone()['count']
             
-            # Top users all-time
-            cursor.execute("""
-                SELECT user_id, username, first_name, last_name, total_operations
-                FROM users
-                ORDER BY total_operations DESC
-                LIMIT 10
-            """)
-            top_users = []
-            for row in cursor.fetchall():
-                top_users.append({
-                    'id': row['user_id'],
-                    'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
-                    'username': row['username'],
-                    'operations': row['total_operations']
-                })
-            
-            # Operations by type
+            # Operations by type today
             cursor.execute("""
                 SELECT operation_type, COUNT(*) as count
                 FROM operations
+                WHERE DATE(timestamp) = %s
                 GROUP BY operation_type
-            """)
+            """, (today,))
             operations_by_type = {row['operation_type']: row['count'] for row in cursor.fetchall()}
+            
+            # Top 3 users today (by operation count)
+            cursor.execute("""
+                SELECT u.user_id, u.username, u.first_name, u.last_name, COUNT(o.id) as operations
+                FROM users u
+                JOIN operations o ON u.user_id = o.user_id
+                WHERE DATE(o.timestamp) = %s
+                GROUP BY u.user_id, u.username, u.first_name, u.last_name
+                ORDER BY operations DESC
+                LIMIT 3
+            """, (today,))
+            top_3_users = []
+            for row in cursor.fetchall():
+                top_3_users.append({
+                    'id': row['user_id'],
+                    'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
+                    'username': row['username'],
+                    'operations': row['operations']
+                })
+            
+            # Recent 10 users (by last activity time today)
+            cursor.execute("""
+                SELECT DISTINCT ON (u.user_id) 
+                    u.user_id, 
+                    u.username, 
+                    u.first_name, 
+                    u.last_name, 
+                    COUNT(o.id) as operations,
+                    MAX(o.timestamp) as last_activity
+                FROM users u
+                JOIN operations o ON u.user_id = o.user_id
+                WHERE DATE(o.timestamp) = %s
+                GROUP BY u.user_id, u.username, u.first_name, u.last_name
+                ORDER BY last_activity DESC
+                LIMIT 10
+            """, (today,))
+            recent_10_users = []
+            for row in cursor.fetchall():
+                recent_10_users.append({
+                    'id': row['user_id'],
+                    'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
+                    'username': row['username'],
+                    'operations': row['operations'],
+                    'last_active': row['last_activity'].strftime('%H:%M:%S')
+                })
             
             cursor.close()
             conn.close()
             
             return {
-                'today_unique_users': today_unique_users,
-                'today_operations': today_operations,
-                'today_users': today_users,
-                'total_unique_users': total_unique_users,
+                'date': today.strftime('%Y-%m-%d'),
+                'unique_users': unique_users,
                 'total_operations': total_operations,
-                'top_users': top_users,
                 'operations_by_type': operations_by_type,
+                'top_3_users': top_3_users,
+                'recent_10_users': recent_10_users,
                 'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
         
         except Exception as e:
-            print(f"Error getting statistics: {e}")
-            return self._empty_stats()
+            print(f"Error getting daily statistics: {e}")
+            return self._empty_daily_stats()
     
-    def _empty_stats(self) -> dict:
-        """Return empty statistics structure."""
+    def get_weekly_statistics(self) -> dict:
+        """
+        Get weekly statistics for the current month, including week-by-week breakdown.
+        
+        Returns:
+            dict: Weekly statistics
+        """
+        if not self.enabled:
+            return self._empty_weekly_stats()
+        
+        try:
+            conn = self._get_connection()
+            if not conn:
+                return self._empty_weekly_stats()
+            
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            now = datetime.now()
+            
+            # Get first and last day of current month
+            first_day = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            last_day = now.replace(day=calendar.monthrange(now.year, now.month)[1], hour=23, minute=59, second=59)
+            
+            # Calculate weeks in the month
+            weeks = []
+            current_week_start = first_day
+            week_number = 1
+            
+            while current_week_start <= last_day:
+                # Calculate end of week (Sunday)
+                days_until_sunday = (6 - current_week_start.weekday()) % 7
+                current_week_end = current_week_start + timedelta(days=days_until_sunday, hours=23, minutes=59, seconds=59)
+                
+                # Don't go past end of month
+                if current_week_end > last_day:
+                    current_week_end = last_day
+                
+                # Get stats for this week
+                cursor.execute("""
+                    SELECT COUNT(DISTINCT user_id) as unique_users
+                    FROM operations
+                    WHERE timestamp >= %s AND timestamp <= %s
+                """, (current_week_start, current_week_end))
+                week_unique_users = cursor.fetchone()['unique_users']
+                
+                cursor.execute("""
+                    SELECT COUNT(*) as total_operations
+                    FROM operations
+                    WHERE timestamp >= %s AND timestamp <= %s
+                """, (current_week_start, current_week_end))
+                week_total_operations = cursor.fetchone()['total_operations']
+                
+                # Operations by type for this week
+                cursor.execute("""
+                    SELECT operation_type, COUNT(*) as count
+                    FROM operations
+                    WHERE timestamp >= %s AND timestamp <= %s
+                    GROUP BY operation_type
+                    ORDER BY count DESC
+                """, (current_week_start, current_week_end))
+                week_operations_by_type = {row['operation_type']: row['count'] for row in cursor.fetchall()}
+                
+                # Top 3 users for this week
+                cursor.execute("""
+                    SELECT u.user_id, u.username, u.first_name, u.last_name, COUNT(o.id) as operations
+                    FROM users u
+                    JOIN operations o ON u.user_id = o.user_id
+                    WHERE o.timestamp >= %s AND o.timestamp <= %s
+                    GROUP BY u.user_id, u.username, u.first_name, u.last_name
+                    ORDER BY operations DESC
+                    LIMIT 3
+                """, (current_week_start, current_week_end))
+                week_top_3_users = []
+                for row in cursor.fetchall():
+                    week_top_3_users.append({
+                        'id': row['user_id'],
+                        'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
+                        'username': row['username'],
+                        'operations': row['operations']
+                    })
+                
+                weeks.append({
+                    'week_number': week_number,
+                    'date_range': f"{current_week_start.strftime('%b %d')} - {current_week_end.strftime('%b %d')}",
+                    'unique_users': week_unique_users,
+                    'total_operations': week_total_operations,
+                    'operations_by_type': week_operations_by_type,
+                    'top_3_users': week_top_3_users
+                })
+                
+                # Move to next week (start on Monday)
+                current_week_start = current_week_end + timedelta(seconds=1)
+                current_week_start = current_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+                # Adjust to Monday
+                days_since_monday = current_week_start.weekday()
+                if days_since_monday != 0:
+                    current_week_start += timedelta(days=(7 - days_since_monday))
+                
+                week_number += 1
+            
+            # Overall month statistics
+            cursor.execute("""
+                SELECT COUNT(DISTINCT user_id) as count
+                FROM operations
+                WHERE timestamp >= %s AND timestamp <= %s
+            """, (first_day, last_day))
+            total_unique_users = cursor.fetchone()['count']
+            
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM operations
+                WHERE timestamp >= %s AND timestamp <= %s
+            """, (first_day, last_day))
+            total_operations = cursor.fetchone()['count']
+            
+            # Overall top 3 users this month
+            cursor.execute("""
+                SELECT u.user_id, u.username, u.first_name, u.last_name, COUNT(o.id) as operations
+                FROM users u
+                JOIN operations o ON u.user_id = o.user_id
+                WHERE o.timestamp >= %s AND o.timestamp <= %s
+                GROUP BY u.user_id, u.username, u.first_name, u.last_name
+                ORDER BY operations DESC
+                LIMIT 3
+            """, (first_day, last_day))
+            overall_top_3 = []
+            for row in cursor.fetchall():
+                overall_top_3.append({
+                    'id': row['user_id'],
+                    'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
+                    'username': row['username'],
+                    'operations': row['operations']
+                })
+            
+            # Total operations by type this month
+            cursor.execute("""
+                SELECT operation_type, COUNT(*) as count
+                FROM operations
+                WHERE timestamp >= %s AND timestamp <= %s
+                GROUP BY operation_type
+                ORDER BY count DESC
+            """, (first_day, last_day))
+            total_operations_by_type = {row['operation_type']: row['count'] for row in cursor.fetchall()}
+            
+            cursor.close()
+            conn.close()
+            
+            return {
+                'month_name': now.strftime('%B'),
+                'year': now.year,
+                'total_unique_users': total_unique_users,
+                'total_operations': total_operations,
+                'weeks': weeks,
+                'overall_top_3': overall_top_3,
+                'total_operations_by_type': total_operations_by_type,
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+        
+        except Exception as e:
+            print(f"Error getting weekly statistics: {e}")
+            return self._empty_weekly_stats()
+    
+    def _empty_daily_stats(self) -> dict:
+        """Return empty daily statistics structure."""
         return {
-            'today_unique_users': 0,
-            'today_operations': 0,
-            'today_users': [],
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'unique_users': 0,
+            'total_operations': 0,
+            'operations_by_type': {},
+            'top_3_users': [],
+            'recent_10_users': [],
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+    
+    def _empty_weekly_stats(self) -> dict:
+        """Return empty weekly statistics structure."""
+        now = datetime.now()
+        return {
+            'month_name': now.strftime('%B'),
+            'year': now.year,
             'total_unique_users': 0,
             'total_operations': 0,
-            'top_users': [],
-            'operations_by_type': {},
+            'weeks': [],
+            'overall_top_3': [],
+            'total_operations_by_type': {},
             'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
     
