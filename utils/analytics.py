@@ -152,31 +152,34 @@ class Analytics:
                 return self._empty_daily_stats()
             
             cursor = conn.cursor(cursor_factory=RealDictCursor)
-            today = datetime.now().date()
+            
+            # Get today's date range (start and end of day)
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
             
             # Today's unique users
             cursor.execute("""
                 SELECT COUNT(DISTINCT user_id) as count
                 FROM operations
-                WHERE DATE(timestamp) = %s
-            """, (today,))
+                WHERE timestamp >= %s AND timestamp <= %s
+            """, (today_start, today_end))
             unique_users = cursor.fetchone()['count']
             
             # Today's total operations
             cursor.execute("""
                 SELECT COUNT(*) as count
                 FROM operations
-                WHERE DATE(timestamp) = %s
-            """, (today,))
+                WHERE timestamp >= %s AND timestamp <= %s
+            """, (today_start, today_end))
             total_operations = cursor.fetchone()['count']
             
             # Operations by type today
             cursor.execute("""
                 SELECT operation_type, COUNT(*) as count
                 FROM operations
-                WHERE DATE(timestamp) = %s
+                WHERE timestamp >= %s AND timestamp <= %s
                 GROUP BY operation_type
-            """, (today,))
+            """, (today_start, today_end))
             operations_by_type = {row['operation_type']: row['count'] for row in cursor.fetchall()}
             
             # Top 3 users today (by operation count)
@@ -184,11 +187,11 @@ class Analytics:
                 SELECT u.user_id, u.username, u.first_name, u.last_name, COUNT(o.id) as operations
                 FROM users u
                 JOIN operations o ON u.user_id = o.user_id
-                WHERE DATE(o.timestamp) = %s
+                WHERE o.timestamp >= %s AND o.timestamp <= %s
                 GROUP BY u.user_id, u.username, u.first_name, u.last_name
                 ORDER BY operations DESC
                 LIMIT 3
-            """, (today,))
+            """, (today_start, today_end))
             top_3_users = []
             for row in cursor.fetchall():
                 top_3_users.append({
@@ -200,7 +203,7 @@ class Analytics:
             
             # Recent 10 users (by last activity time today)
             cursor.execute("""
-                SELECT DISTINCT ON (u.user_id) 
+                SELECT 
                     u.user_id, 
                     u.username, 
                     u.first_name, 
@@ -209,11 +212,11 @@ class Analytics:
                     MAX(o.timestamp) as last_activity
                 FROM users u
                 JOIN operations o ON u.user_id = o.user_id
-                WHERE DATE(o.timestamp) = %s
+                WHERE o.timestamp >= %s AND o.timestamp <= %s
                 GROUP BY u.user_id, u.username, u.first_name, u.last_name
                 ORDER BY last_activity DESC
                 LIMIT 10
-            """, (today,))
+            """, (today_start, today_end))
             recent_10_users = []
             for row in cursor.fetchall():
                 recent_10_users.append({
@@ -228,7 +231,7 @@ class Analytics:
             conn.close()
             
             return {
-                'date': today.strftime('%Y-%m-%d'),
+                'date': today_start.strftime('%Y-%m-%d'),
                 'unique_users': unique_users,
                 'total_operations': total_operations,
                 'operations_by_type': operations_by_type,
@@ -239,6 +242,8 @@ class Analytics:
         
         except Exception as e:
             print(f"Error getting daily statistics: {e}")
+            import traceback
+            traceback.print_exc()
             return self._empty_daily_stats()
     
     def get_weekly_statistics(self) -> dict:
