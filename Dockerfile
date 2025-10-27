@@ -6,11 +6,14 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
-# Install system dependencies
+# Install system dependencies with verification
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
+    ghostscript \
+    && rm -rf /var/lib/apt/lists/* \
+    && gs --version \
+    && pdftoppm -v
 
 # Set working directory
 WORKDIR /app
@@ -34,9 +37,8 @@ RUN useradd -m -u 1000 botuser && \
 
 USER botuser
 
-# Health check (optional)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)"
+# Verify installations on startup
+RUN gs --version && echo "✅ Ghostscript verified" || echo "❌ Ghostscript missing"
 
 # Run the bot
 CMD ["python", "bot.py"]

@@ -2,7 +2,10 @@
 aptPkgs = ["poppler-utils", "ghostscript"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = [
+  "pip install -r requirements.txt",
+  "gs --version || echo 'WARNING: Ghostscript not found!'"
+]
 
 [start]
 cmd = "python bot.py"

@@ -9,7 +9,7 @@ Features:
 - Convert PDF to images
 - Convert images to PDF
 
-Author: Your Name
+Author: Vasisth Roy
 Version: 1.0.0
 """
 
@@ -40,6 +40,15 @@ from handlers import (
     handle_image_file
 )
 from utils import cleanup_scheduler
+
+# Import system check
+try:
+    from system_check import run_system_checks
+except ImportError:
+    # If system_check.py doesn't exist, create a simple fallback
+    def run_system_checks():
+        print("⚠️  System check module not found, skipping checks...")
+        return True
 
 # Configure logging
 logging.basicConfig(
@@ -108,6 +117,14 @@ def main() -> None:
     """
     Main function to start the bot.
     """
+    # Run system checks
+    logger.info("Running system dependency checks...")
+    if not run_system_checks():
+        logger.error("System checks failed! Bot may not function properly.")
+        logger.error("Please install missing dependencies and restart.")
+        # Don't exit - allow bot to start with warnings
+        # sys.exit(1)
+    
     # Validate configuration
     if not config.validate_config():
         logger.error("Configuration validation failed!")
