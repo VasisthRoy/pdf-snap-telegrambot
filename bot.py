@@ -79,7 +79,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
                 "• Use /cancel and try again\n"
                 "• Restart with /start\n"
                 "• Check if your files are valid\n\n"
-                "If the problem persists, please report it on GitHub.",
+                "If the problem persists, please report it @snapbothub",
                 parse_mode='Markdown'
             )
         except Exception:
