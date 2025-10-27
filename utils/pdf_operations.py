@@ -194,12 +194,7 @@ class PDFOperations:
             
             # Open and compress PDF using pikepdf
             with pikepdf.open(pdf_path) as pdf:
-                # Optimize images and remove unnecessary data
-                for page in pdf.pages:
-                    # This will optimize the page
-                    page.compress_content_streams()
-                
-                # Save with compression
+                # Save with compression settings
                 pdf.save(
                     output_path,
                     compress_streams=True,
