@@ -88,7 +88,7 @@ Result: merged\\.pdf \\(contains all pages\\)
 - Max files: 20
 - Max size per file: 50MB
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *2️⃣ SPLIT PDF*
 Extract specific pages from a PDF\\.
@@ -110,7 +110,7 @@ Extract specific pages from a PDF\\.
 /split 2,4,6 → Extract pages 2, 4, 6
 /split 5\\-end → Extract from page 5 to last page
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *3️⃣ COMPRESS PDF*
 Reduce PDF file size while maintaining quality\\.
@@ -130,7 +130,7 @@ Send: large\\_document\\.pdf \\(10MB\\)
 Command: /compress
 Result: compressed\\.pdf \\(3\\-5MB typically\\)
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *4️⃣ PDF TO IMAGES*
 Convert each PDF page to an image file\\.
@@ -150,7 +150,7 @@ Result: 5 separate image files
 - High quality \\(200 DPI\\)
 - For PDFs with many pages \\(\\>10\\), consider file size
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *5️⃣ IMAGES TO PDF*
 Combine multiple images into one PDF\\.
@@ -172,7 +172,7 @@ Result: combined\\.pdf \\(3 pages\\)
 - Max images: 50
 - Images are ordered by upload time
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *⚠️ IMPORTANT NOTES:*
 
@@ -196,7 +196,7 @@ If something goes wrong, you'll receive:
 - Suggestion for fixing the issue
 - Can retry with /cancel and start over
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *🆘 COMMON ISSUES:*
 
@@ -212,7 +212,7 @@ If something goes wrong, you'll receive:
 *"Processing failed"*
 → File may be corrupted, try another file
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *💡 TIPS & TRICKS:*
 
@@ -228,7 +228,7 @@ If something goes wrong, you'll receive:
 
 5\\. *Cancel anytime:* Use /cancel to abort current operation
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *❓ Still Need Help?*
 
@@ -263,7 +263,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 *Version:* {bot_info['version']}
 *Description:* {bot_info['description']}
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *📊 System Info:*
 - Max file size: 50MB
@@ -271,7 +271,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 - Max images to convert: 50
 - Supported formats: PDF, JPG, PNG, GIF, BMP, TIFF, WEBP
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *✨ Features:*
 - Merge multiple PDFs
@@ -291,7 +291,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 - No limits on usage
 - No ads or subscriptions
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 *👨‍💻 Developer:*
 {bot_info['developer']}
@@ -300,7 +300,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 Found a bug? Have suggestions?
 Reach out to our Official Support Channel : @snapbothub
 
-━━━━━━━━━━━━━━━━━━━━━
+\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
 
 Made with ❤️ for the Telegram community\\!
 
