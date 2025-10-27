@@ -303,7 +303,7 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 **🐛 Report Issues:**
 Found a bug? Have suggestions?
-Reach me out at https://t.me/snapbothub
+Reach out to our Official Support Channel : @snapbothub
 
 
 ━━━━━━━━━━━━━━━━━━━━━
