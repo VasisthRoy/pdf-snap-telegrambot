@@ -163,13 +163,120 @@ class PDFOperations:
         return sorted(list(set(pages)))
     
     @staticmethod
+    def compress_pdf_advanced(
+        pdf_path: Path,
+        output_path: Path,
+        target: dict
+    ) -> Tuple[bool, float, float]:
+        """
+        Advanced PDF compression with flexible targets.
+        
+        Args:
+            pdf_path: Path to source PDF
+            output_path: Path where compressed PDF should be saved
+            target: Compression target dict with type, value, and unit
+            
+        Returns:
+            Tuple[bool, float, float]: (Success, original size MB, compressed size MB)
+        """
+        if not pdf_path.exists():
+            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+        
+        original_size = pdf_path.stat().st_size / (1024 * 1024)
+        
+        try:
+            # Determine quality level based on target
+            if target['type'] == 'quality':
+                quality_level = target['value']
+            elif target['type'] == 'percentage':
+                # Map percentage to quality level
+                percent = target['value']
+                if percent <= 40:
+                    quality_level = 'low'
+                elif percent <= 70:
+                    quality_level = 'default'
+                else:
+                    quality_level = 'high'
+            else:  # size target
+                # Estimate quality based on target size ratio
+                target_mb = target['value']
+                ratio = target_mb / original_size
+                if ratio <= 0.4:
+                    quality_level = 'low'
+                elif ratio <= 0.7:
+                    quality_level = 'default'
+                else:
+                    quality_level = 'high'
+            
+            # Try multiple compression passes if needed
+            best_result = None
+            quality_levels = ['low', 'default', 'high']
+            
+            # Start with determined quality level
+            start_idx = quality_levels.index(quality_level)
+            
+            for i in range(start_idx, -1, -1):  # Try from selected quality down to low
+                current_quality = quality_levels[i]
+                temp_output = output_path.parent / f"temp_{i}.pdf"
+                
+                try:
+                    # Compress with current quality
+                    success, orig_size, comp_size = PDFOperations.compress_pdf(
+                        pdf_path,
+                        temp_output,
+                        current_quality
+                    )
+                    
+                    if success and temp_output.exists():
+                        # Check if target is met
+                        if target['type'] == 'percentage':
+                            target_size = original_size * (target['value'] / 100)
+                            if comp_size <= target_size * 1.1:  # Within 10% tolerance
+                                # Target met
+                                best_result = (temp_output, comp_size)
+                                break
+                        elif target['type'] == 'size':
+                            if comp_size <= target['value'] * 1.1:  # Within 10% tolerance
+                                # Target met
+                                best_result = (temp_output, comp_size)
+                                break
+                        
+                        # Store as best result if better than previous
+                        if best_result is None or comp_size < best_result[1]:
+                            best_result = (temp_output, comp_size)
+                    
+                except Exception as e:
+                    print(f"Compression with {current_quality} failed: {e}")
+                    continue
+            
+            # Use best result found
+            if best_result:
+                import shutil
+                shutil.move(str(best_result[0]), str(output_path))
+                
+                # Clean up temp files
+                for i in range(3):
+                    temp_file = output_path.parent / f"temp_{i}.pdf"
+                    if temp_file.exists() and temp_file != best_result[0]:
+                        temp_file.unlink()
+                
+                return True, original_size, best_result[1]
+            else:
+                # Fall back to standard compression
+                return PDFOperations.compress_pdf(pdf_path, output_path, quality_level)
+        
+        except Exception as e:
+            print(f"Advanced compression failed: {e}")
+            raise
+    
+    @staticmethod
     def compress_pdf(
         pdf_path: Path,
         output_path: Path,
         quality: str = "default"
     ) -> Tuple[bool, float, float]:
         """
-        Compress a PDF file to reduce its size using Ghostscript.
+        Compress a PDF file to reduce its size.
         
         Args:
             pdf_path: Path to source PDF
@@ -206,6 +313,9 @@ class PDFOperations:
                     '-dNOPAUSE',
                     '-dQUIET',
                     '-dBATCH',
+                    '-dDetectDuplicateImages=true',
+                    '-dCompressFonts=true',
+                    '-r150',  # Reduce image resolution to 150 DPI
                     f'-sOutputFile={output_path}',
                     str(pdf_path)
                 ]
@@ -223,7 +333,7 @@ class PDFOperations:
                     return True, original_size, compressed_size
                 else:
                     # Ghostscript failed, fall back to pikepdf
-                    raise Exception("Ghostscript compression failed")
+                    raise Exception(f"Ghostscript compression failed: {result.stderr}")
                     
             except (FileNotFoundError, subprocess.TimeoutExpired, Exception) as e:
                 # Ghostscript not available or failed, use pikepdf as fallback
