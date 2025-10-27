@@ -1,5 +1,8 @@
 [phases.setup]
 aptPkgs = ["poppler-utils", "ghostscript"]
 
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
 [start]
 cmd = "python bot.py"
