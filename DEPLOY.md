@@ -80,7 +80,7 @@ Create a file called `nixpacks.toml` in your project root:
 
 ```toml
 [phases.setup]
-aptPkgs = ["poppler-utils"]
+aptPkgs = ["poppler-utils", "ghostscript"]
 
 [start]
 cmd = "python bot.py"
@@ -522,7 +522,7 @@ curl https://api.telegram.org/bot<YOUR_TOKEN>/getMe
 **Railway:** Add `nixpacks.toml`:
 ```toml
 [phases.setup]
-aptPkgs = ["poppler-utils"]
+aptPkgs = ["poppler-utils", "ghostscript"]
 ```
 
 **Render:** Update build command:
