@@ -20,42 +20,42 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     user_name = update.effective_user.first_name
     
     welcome_message = f"""
-👋 *Welcome {user_name}\\!*
+👋 <b>Welcome {user_name}!</b>
 
-I'm *{config.BOT_NAME}* \\- Your free PDF manipulation assistant\\! 🎉
+I'm <b>{config.BOT_NAME}</b> - Your free PDF manipulation assistant! 🎉
 
-🔧 *What I Can Do:*
+🔧 <b>What I Can Do:</b>
 - 📄 Merge multiple PDFs into one
 - ✂️ Split PDFs and extract specific pages
 - 🗜️ Compress PDFs to reduce file size
 - 🖼️ Convert PDFs to images
 - 📄 Convert images to PDF
 
-⚡ *Quick Start:*
-1\\. Send me PDF files or images
-2\\. Use commands below to process them
-3\\. Get your result instantly\\!
+⚡ <b>Quick Start:</b>
+1. Send me PDF files or images
+2. Use commands below to process them
+3. Get your result instantly!
 
-📋 *Available Commands:*
-/merge \\- Merge multiple PDFs into one
-/split \\- Extract pages \\(e\\.g\\., /split 1\\-3\\)
-/compress \\- Reduce PDF file size
-/toimage \\- Convert PDF to images
-/topdf \\- Convert images to PDF
-/help \\- Detailed help and examples
-/about \\- Bot information
-/cancel \\- Cancel current operation
+📋 <b>Available Commands:</b>
+/merge - Merge multiple PDFs into one
+/split - Extract pages (e.g., /split 1-3)
+/compress - Reduce PDF file size
+/toimage - Convert PDF to images
+/topdf - Convert images to PDF
+/help - Detailed help and examples
+/about - Bot information
+/cancel - Cancel current operation
 
-💡 *Tip:* Send me files first, then use the commands\\!
+💡 <b>Tip:</b> Send me files first, then use the commands!
 
-Need help? Type /help for detailed instructions\\.
+Need help? Type /help for detailed instructions.
 
-Let's get started\\! 🚀
+Let's get started! 🚀
 """
     
     await update.message.reply_text(
         welcome_message,
-        parse_mode='MarkdownV2'
+        parse_mode='HTML'
     )
 
 
@@ -68,181 +68,183 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         context: Telegram context object
     """
     help_message = """
-📚 *Detailed Help Guide*
+📚 <b>Detailed Help Guide</b>
 
-*1️⃣ MERGE PDFs*
-Combine multiple PDF files into one document\\.
+━━━━━━━━━━━━━━━━━━━━━
 
-*How to use:*
+<b>1️⃣ MERGE PDFs</b>
+Combine multiple PDF files into one document.
+
+<b>How to use:</b>
 - Send 2 or more PDF files
 - Type: /merge
 - Receive merged PDF
 
-*Example:*
-Send: report1\\.pdf, report2\\.pdf
+<b>Example:</b>
+Send: report1.pdf, report2.pdf
 Command: /merge
-Result: merged\\.pdf \\(contains all pages\\)
+Result: merged.pdf (contains all pages)
 
-*Limits:*
+<b>Limits:</b>
 - Min files: 2
 - Max files: 20
 - Max size per file: 50MB
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*2️⃣ SPLIT PDF*
-Extract specific pages from a PDF\\.
+<b>2️⃣ SPLIT PDF</b>
+Extract specific pages from a PDF.
 
-*How to use:*
+<b>How to use:</b>
 - Send 1 PDF file
-- Type: /split \\<page\\_specification\\>
+- Type: /split &lt;page_specification&gt;
 - Receive extracted pages
 
-*Page Specifications:*
+<b>Page Specifications:</b>
 - Single page: /split 5
-- Page range: /split 1\\-3
+- Page range: /split 1-3
 - Multiple pages: /split 1,3,5
-- From page to end: /split 3\\-end
-- Mix formats: /split 1\\-3,5,7\\-end
+- From page to end: /split 3-end
+- Mix formats: /split 1-3,5,7-end
 
-*Examples:*
-/split 1\\-3 → Extract pages 1, 2, 3
+<b>Examples:</b>
+/split 1-3 → Extract pages 1, 2, 3
 /split 2,4,6 → Extract pages 2, 4, 6
-/split 5\\-end → Extract from page 5 to last page
+/split 5-end → Extract from page 5 to last page
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*3️⃣ COMPRESS PDF*
-Reduce PDF file size while maintaining quality\\.
+<b>3️⃣ COMPRESS PDF</b>
+Reduce PDF file size while maintaining quality.
 
-*How to use:*
+<b>How to use:</b>
 - Send 1 PDF file
-- Type: /compress \\[quality\\]
+- Type: /compress [quality]
 - Receive compressed PDF
 
-*Quality Levels:*
-- /compress → Default \\(balanced\\)
+<b>Quality Levels:</b>
+- /compress → Default (balanced)
 - /compress low → Maximum compression
 - /compress high → Better quality, less compression
 
-*Example:*
-Send: large\\_document\\.pdf \\(10MB\\)
+<b>Example:</b>
+Send: large_document.pdf (10MB)
 Command: /compress
-Result: compressed\\.pdf \\(3\\-5MB typically\\)
+Result: compressed.pdf (3-5MB typically)
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*4️⃣ PDF TO IMAGES*
-Convert each PDF page to an image file\\.
+<b>4️⃣ PDF TO IMAGES</b>
+Convert each PDF page to an image file.
 
-*How to use:*
+<b>How to use:</b>
 - Send 1 PDF file
 - Type: /toimage, /topng, or /tojpg
-- Receive images \\(PNG format default\\)
+- Receive images (PNG format default)
 
-*Example:*
-Send: presentation\\.pdf \\(5 pages\\)
+<b>Example:</b>
+Send: presentation.pdf (5 pages)
 Command: /toimage
 Result: 5 separate image files
 
-*Notes:*
+<b>Notes:</b>
 - Each page becomes a separate image
-- High quality \\(200 DPI\\)
-- For PDFs with many pages \\(\\>10\\), consider file size
+- High quality (200 DPI)
+- For PDFs with many pages (&gt;10), consider file size
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*5️⃣ IMAGES TO PDF*
-Combine multiple images into one PDF\\.
+<b>5️⃣ IMAGES TO PDF</b>
+Combine multiple images into one PDF.
 
-*How to use:*
-- Send 2\\+ images \\(JPG, PNG, etc\\.\\)
+<b>How to use:</b>
+- Send 2+ images (JPG, PNG, etc.)
 - Type: /topdf
 - Receive combined PDF
 
-*Supported formats:*
+<b>Supported formats:</b>
 JPG, JPEG, PNG, GIF, BMP, TIFF, WEBP
 
-*Example:*
-Send: photo1\\.jpg, photo2\\.jpg, photo3\\.png
+<b>Example:</b>
+Send: photo1.jpg, photo2.jpg, photo3.png
 Command: /topdf
-Result: combined\\.pdf \\(3 pages\\)
+Result: combined.pdf (3 pages)
 
-*Limits:*
+<b>Limits:</b>
 - Max images: 50
 - Images are ordered by upload time
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*⚠️ IMPORTANT NOTES:*
+<b>⚠️ IMPORTANT NOTES:</b>
 
-*File Size Limits:*
+<b>File Size Limits:</b>
 - Maximum file size: 50MB per file
 - This is Telegram's limit for bot downloads
 
-*Temporary Storage:*
+<b>Temporary Storage:</b>
 - Files are automatically deleted after processing
 - No files are stored permanently
 - Your privacy is protected
 
-*Processing Time:*
+<b>Processing Time:</b>
 - Small files: Instant
-- Large files: May take 30\\-60 seconds
+- Large files: May take 30-60 seconds
 - You'll see progress updates
 
-*Error Messages:*
+<b>Error Messages:</b>
 If something goes wrong, you'll receive:
 - Clear error message
 - Suggestion for fixing the issue
 - Can retry with /cancel and start over
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*🆘 COMMON ISSUES:*
+<b>🆘 COMMON ISSUES:</b>
 
-*"No files found"*
+<b>"No files found"</b>
 → Upload files before using commands
 
-*"File too large"*
+<b>"File too large"</b>
 → Compress files or split into smaller PDFs
 
-*"Invalid page range"*
+<b>"Invalid page range"</b>
 → Check page numbers match PDF length
 
-*"Processing failed"*
+<b>"Processing failed"</b>
 → File may be corrupted, try another file
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*💡 TIPS & TRICKS:*
+<b>💡 TIPS &amp; TRICKS:</b>
 
-1\\. *Merge in order:* Files are merged in the order you send them
+1. <b>Merge in order:</b> Files are merged in the order you send them
 
-2\\. *Batch processing:* Send all files at once, then use command
+2. <b>Batch processing:</b> Send all files at once, then use command
 
-3\\. *Quality vs Size:* For compress, use:
+3. <b>Quality vs Size:</b> For compress, use:
    • "low" for maximum compression
    • "high" for best quality
 
-4\\. *Page extraction:* Use /split to remove unwanted pages before sharing
+4. <b>Page extraction:</b> Use /split to remove unwanted pages before sharing
 
-5\\. *Cancel anytime:* Use /cancel to abort current operation
+5. <b>Cancel anytime:</b> Use /cancel to abort current operation
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*❓ Still Need Help?*
+<b>❓ Still Need Help?</b>
 
 - Try /about for bot info
 - Check supported formats above
 - Ensure files aren't corrupted
 - Restart with /start
 
-Happy PDF processing\\! 🎉
+Happy PDF processing! 🎉
 """
     
     await update.message.reply_text(
         help_message,
-        parse_mode='MarkdownV2'
+        parse_mode='HTML'
     )
 
 
@@ -257,59 +259,59 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     bot_info = config.get_bot_info()
     
     about_message = f"""
-ℹ️ *About This Bot*
+ℹ️ <b>About This Bot</b>
 
-*Name:* {bot_info['name']}
-*Version:* {bot_info['version']}
-*Description:* {bot_info['description']}
+<b>Name:</b> {bot_info['name']}
+<b>Version:</b> {bot_info['version']}
+<b>Description:</b> {bot_info['description']}
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*📊 System Info:*
+<b>📊 System Info:</b>
 - Max file size: 50MB
 - Max PDFs to merge: 20
 - Max images to convert: 50
 - Supported formats: PDF, JPG, PNG, GIF, BMP, TIFF, WEBP
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*✨ Features:*
+<b>✨ Features:</b>
 - Merge multiple PDFs
 - Split PDFs by page range
 - Compress PDFs efficiently
 - Convert PDF to images
 - Convert images to PDF
 
-*🔒 Privacy:*
+<b>🔒 Privacy:</b>
 - No data storage
 - Files deleted after processing
 - Secure temporary storage
 - No tracking or analytics
 
-*💰 Cost:*
+<b>💰 Cost:</b>
 - Completely FREE
 - No limits on usage
 - No ads or subscriptions
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-*👨‍💻 Developer:*
+<b>👨‍💻 Developer:</b>
 {bot_info['developer']}
 
-*🐛 Report Issues:*
+<b>🐛 Report Issues:</b>
 Found a bug? Have suggestions?
 Reach out to our Official Support Channel : @snapbothub
 
-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-\\-
+━━━━━━━━━━━━━━━━━━━━━
 
-Made with ❤️ for the Telegram community\\!
+Made with ❤️ for the Telegram community!
 
-Type /help for usage instructions\\.
+Type /help for usage instructions.
 """
     
     await update.message.reply_text(
         about_message,
-        parse_mode='MarkdownV2'
+        parse_mode='HTML'
     )
 
 
@@ -332,8 +334,8 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data.clear()
     
     await update.message.reply_text(
-        "✅ Operation cancelled\\!\n\n"
-        "All temporary files have been deleted\\.\n"
-        "You can start a new operation anytime\\. 🔄",
-        parse_mode='MarkdownV2'
+        "✅ Operation cancelled!\n\n"
+        "All temporary files have been deleted.\n"
+        "You can start a new operation anytime. 🔄",
+        parse_mode='HTML'
     )
