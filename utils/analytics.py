@@ -1,45 +1,94 @@
 """
 Analytics utilities for PDF Telegram Bot.
-Tracks user activity and generates statistics.
+Tracks user activity and generates statistics using PostgreSQL.
 """
 
-import json
-from pathlib import Path
+import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from telegram import User
 
 
 class Analytics:
-    """Handles user activity tracking and statistics."""
+    """Handles user activity tracking and statistics with PostgreSQL."""
     
     def __init__(self):
-        """Initialize analytics with data file."""
-        self.data_file = Path("/tmp/pdf_bot_analytics.json")
-        self.data = self._load_data()
+        """Initialize analytics with PostgreSQL connection."""
+        self.database_url = os.getenv('DATABASE_URL')
+        if not self.database_url:
+            print("⚠️  WARNING: DATABASE_URL not found. Analytics will be disabled.")
+            self.enabled = False
+        else:
+            self.enabled = True
+            self._init_database()
     
-    def _load_data(self) -> dict:
-        """Load analytics data from file."""
-        if self.data_file.exists():
-            try:
-                with open(self.data_file, 'r') as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Error loading analytics data: {e}")
-        
-        return {
-            'users': {},  # user_id -> user data
-            'daily_stats': {},  # date -> stats
-            'operations': []  # list of operations
-        }
-    
-    def _save_data(self) -> None:
-        """Save analytics data to file."""
+    def _get_connection(self):
+        """Get database connection."""
+        if not self.enabled:
+            return None
         try:
-            with open(self.data_file, 'w') as f:
-                json.dump(self.data, f, indent=2)
+            return psycopg2.connect(self.database_url)
         except Exception as e:
-            print(f"Error saving analytics data: {e}")
+            print(f"Error connecting to database: {e}")
+            return None
+    
+    def _init_database(self) -> None:
+        """Initialize database tables if they don't exist."""
+        if not self.enabled:
+            return
+        
+        try:
+            conn = self._get_connection()
+            if not conn:
+                return
+            
+            cursor = conn.cursor()
+            
+            # Create users table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id BIGINT PRIMARY KEY,
+                    username VARCHAR(255),
+                    first_name VARCHAR(255),
+                    last_name VARCHAR(255),
+                    first_seen DATE NOT NULL,
+                    last_seen DATE NOT NULL,
+                    total_operations INTEGER DEFAULT 0
+                )
+            """)
+            
+            # Create operations table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS operations (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    operation_type VARCHAR(50) NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                )
+            """)
+            
+            # Create index for faster queries
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_operations_timestamp 
+                ON operations(timestamp)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_operations_user_id 
+                ON operations(user_id)
+            """)
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            print("✅ Database tables initialized successfully")
+        
+        except Exception as e:
+            print(f"Error initializing database: {e}")
     
     def track_user(self, user: User, operation: str) -> None:
         """
@@ -49,62 +98,42 @@ class Analytics:
             user: Telegram User object
             operation: Operation performed (merge, split, compress, etc.)
         """
-        user_id = str(user.id)
-        today = datetime.now().strftime('%Y-%m-%d')
+        if not self.enabled:
+            return
         
-        # Update user data
-        if user_id not in self.data['users']:
-            self.data['users'][user_id] = {
-                'id': user.id,
-                'username': user.username,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'first_seen': today,
-                'last_seen': today,
-                'total_operations': 0,
-                'operations_by_type': {}
-            }
+        try:
+            conn = self._get_connection()
+            if not conn:
+                return
+            
+            cursor = conn.cursor()
+            today = datetime.now().date()
+            
+            # Insert or update user
+            cursor.execute("""
+                INSERT INTO users (user_id, username, first_name, last_name, first_seen, last_seen, total_operations)
+                VALUES (%s, %s, %s, %s, %s, %s, 1)
+                ON CONFLICT (user_id) 
+                DO UPDATE SET
+                    username = EXCLUDED.username,
+                    first_name = EXCLUDED.first_name,
+                    last_name = EXCLUDED.last_name,
+                    last_seen = EXCLUDED.last_seen,
+                    total_operations = users.total_operations + 1
+            """, (user.id, user.username, user.first_name, user.last_name, today, today))
+            
+            # Insert operation record
+            cursor.execute("""
+                INSERT INTO operations (user_id, operation_type)
+                VALUES (%s, %s)
+            """, (user.id, operation))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
         
-        user_data = self.data['users'][user_id]
-        user_data['last_seen'] = today
-        user_data['total_operations'] += 1
-        
-        # Update username in case it changed
-        user_data['username'] = user.username
-        user_data['first_name'] = user.first_name
-        user_data['last_name'] = user.last_name
-        
-        # Track operation type
-        if operation not in user_data['operations_by_type']:
-            user_data['operations_by_type'][operation] = 0
-        user_data['operations_by_type'][operation] += 1
-        
-        # Update daily stats
-        if today not in self.data['daily_stats']:
-            self.data['daily_stats'][today] = {
-                'unique_users': set(),
-                'total_operations': 0,
-                'operations_by_type': {}
-            }
-        
-        daily_stats = self.data['daily_stats'][today]
-        
-        # Convert set to list for JSON serialization, then back to set
-        if isinstance(daily_stats['unique_users'], list):
-            daily_stats['unique_users'] = set(daily_stats['unique_users'])
-        
-        daily_stats['unique_users'].add(user_id)
-        daily_stats['total_operations'] += 1
-        
-        if operation not in daily_stats['operations_by_type']:
-            daily_stats['operations_by_type'][operation] = 0
-        daily_stats['operations_by_type'][operation] += 1
-        
-        # Convert set back to list for JSON serialization
-        daily_stats['unique_users'] = list(daily_stats['unique_users'])
-        
-        # Save data
-        self._save_data()
+        except Exception as e:
+            print(f"Error tracking user: {e}")
     
     def get_statistics(self) -> dict:
         """
@@ -113,59 +142,109 @@ class Analytics:
         Returns:
             dict: Statistics including today's users, all-time stats, etc.
         """
-        today = datetime.now().strftime('%Y-%m-%d')
+        if not self.enabled:
+            return self._empty_stats()
         
-        # Get today's stats
-        today_stats = self.data['daily_stats'].get(today, {
-            'unique_users': [],
-            'total_operations': 0,
-            'operations_by_type': {}
-        })
-        
-        # Get today's users with details
-        today_users = []
-        for user_id in today_stats.get('unique_users', []):
-            if user_id in self.data['users']:
-                user_data = self.data['users'][user_id]
+        try:
+            conn = self._get_connection()
+            if not conn:
+                return self._empty_stats()
+            
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            today = datetime.now().date()
+            
+            # Today's unique users
+            cursor.execute("""
+                SELECT COUNT(DISTINCT user_id) as count
+                FROM operations
+                WHERE DATE(timestamp) = %s
+            """, (today,))
+            today_unique_users = cursor.fetchone()['count']
+            
+            # Today's total operations
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM operations
+                WHERE DATE(timestamp) = %s
+            """, (today,))
+            today_operations = cursor.fetchone()['count']
+            
+            # Today's users with details
+            cursor.execute("""
+                SELECT u.user_id, u.username, u.first_name, u.last_name, u.total_operations
+                FROM users u
+                WHERE u.last_seen = %s
+                ORDER BY u.total_operations DESC
+            """, (today,))
+            today_users = []
+            for row in cursor.fetchall():
                 today_users.append({
-                    'id': user_data['id'],
-                    'name': f"{user_data['first_name']} {user_data.get('last_name', '')}".strip(),
-                    'username': user_data.get('username'),
-                    'operations': user_data['total_operations']
+                    'id': row['user_id'],
+                    'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
+                    'username': row['username'],
+                    'operations': row['total_operations']
                 })
+            
+            # Total unique users
+            cursor.execute("SELECT COUNT(*) as count FROM users")
+            total_unique_users = cursor.fetchone()['count']
+            
+            # Total operations
+            cursor.execute("SELECT COUNT(*) as count FROM operations")
+            total_operations = cursor.fetchone()['count']
+            
+            # Top users all-time
+            cursor.execute("""
+                SELECT user_id, username, first_name, last_name, total_operations
+                FROM users
+                ORDER BY total_operations DESC
+                LIMIT 10
+            """)
+            top_users = []
+            for row in cursor.fetchall():
+                top_users.append({
+                    'id': row['user_id'],
+                    'name': f"{row['first_name']} {row['last_name'] or ''}".strip(),
+                    'username': row['username'],
+                    'operations': row['total_operations']
+                })
+            
+            # Operations by type
+            cursor.execute("""
+                SELECT operation_type, COUNT(*) as count
+                FROM operations
+                GROUP BY operation_type
+            """)
+            operations_by_type = {row['operation_type']: row['count'] for row in cursor.fetchall()}
+            
+            cursor.close()
+            conn.close()
+            
+            return {
+                'today_unique_users': today_unique_users,
+                'today_operations': today_operations,
+                'today_users': today_users,
+                'total_unique_users': total_unique_users,
+                'total_operations': total_operations,
+                'top_users': top_users,
+                'operations_by_type': operations_by_type,
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
         
-        # Sort today's users by operations
-        today_users.sort(key=lambda x: x['operations'], reverse=True)
-        
-        # Get top users all-time
-        top_users = []
-        for user_id, user_data in self.data['users'].items():
-            top_users.append({
-                'id': user_data['id'],
-                'name': f"{user_data['first_name']} {user_data.get('last_name', '')}".strip(),
-                'username': user_data.get('username'),
-                'operations': user_data['total_operations']
-            })
-        
-        # Sort by total operations
-        top_users.sort(key=lambda x: x['operations'], reverse=True)
-        
-        # Calculate total operations by type
-        operations_by_type = {}
-        for user_data in self.data['users'].values():
-            for op_type, count in user_data.get('operations_by_type', {}).items():
-                if op_type not in operations_by_type:
-                    operations_by_type[op_type] = 0
-                operations_by_type[op_type] += count
-        
+        except Exception as e:
+            print(f"Error getting statistics: {e}")
+            return self._empty_stats()
+    
+    def _empty_stats(self) -> dict:
+        """Return empty statistics structure."""
         return {
-            'today_unique_users': len(today_stats.get('unique_users', [])),
-            'today_operations': today_stats.get('total_operations', 0),
-            'today_users': today_users,
-            'total_unique_users': len(self.data['users']),
-            'total_operations': sum(u['total_operations'] for u in self.data['users'].values()),
-            'top_users': top_users,
-            'operations_by_type': operations_by_type,
+            'today_unique_users': 0,
+            'today_operations': 0,
+            'today_users': [],
+            'total_unique_users': 0,
+            'total_operations': 0,
+            'top_users': [],
+            'operations_by_type': {},
             'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
     
@@ -179,28 +258,62 @@ class Analytics:
         Returns:
             dict: User information or None if not found
         """
-        return self.data['users'].get(str(user_id))
+        if not self.enabled:
+            return None
+        
+        try:
+            conn = self._get_connection()
+            if not conn:
+                return None
+            
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            
+            cursor.execute("""
+                SELECT * FROM users WHERE user_id = %s
+            """, (user_id,))
+            
+            result = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            
+            return dict(result) if result else None
+        
+        except Exception as e:
+            print(f"Error getting user info: {e}")
+            return None
     
-    def cleanup_old_data(self, days: int = 30) -> None:
+    def cleanup_old_data(self, days: int = 90) -> None:
         """
-        Clean up daily stats older than specified days.
+        Clean up operations older than specified days.
         
         Args:
             days: Number of days to keep
         """
-        cutoff_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+        if not self.enabled:
+            return
         
-        # Remove old daily stats
-        dates_to_remove = [
-            date for date in self.data['daily_stats'].keys()
-            if date < cutoff_date
-        ]
+        try:
+            conn = self._get_connection()
+            if not conn:
+                return
+            
+            cursor = conn.cursor()
+            cutoff_date = datetime.now() - timedelta(days=days)
+            
+            cursor.execute("""
+                DELETE FROM operations
+                WHERE timestamp < %s
+            """, (cutoff_date,))
+            
+            deleted_count = cursor.rowcount
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            print(f"Cleaned up {deleted_count} old operation records")
         
-        for date in dates_to_remove:
-            del self.data['daily_stats'][date]
-        
-        self._save_data()
-        print(f"Cleaned up {len(dates_to_remove)} days of old analytics data")
+        except Exception as e:
+            print(f"Error cleaning up old data: {e}")
 
 
 # Global analytics instance

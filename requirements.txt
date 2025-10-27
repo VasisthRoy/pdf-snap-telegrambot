@@ -12,6 +12,9 @@ Pillow==10.2.0
 # Environment Variables Management
 python-dotenv==1.0.0
 
+# Database
+psycopg2-binary==2.9.9
+
 # System Dependencies Required (install separately):
 # - poppler-utils (for pdf2image)
 #   Ubuntu/Debian: sudo apt-get install poppler-utils
