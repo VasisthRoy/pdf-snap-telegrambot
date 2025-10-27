@@ -4,6 +4,7 @@ Handles PDF merging, splitting, compression, and format conversions.
 """
 
 import io
+import subprocess
 from pathlib import Path
 from typing import List, Tuple, Optional
 from PIL import Image
@@ -168,7 +169,7 @@ class PDFOperations:
         quality: str = "default"
     ) -> Tuple[bool, float, float]:
         """
-        Compress a PDF file to reduce its size.
+        Compress a PDF file to reduce its size using Ghostscript.
         
         Args:
             pdf_path: Path to source PDF
@@ -192,20 +193,57 @@ class PDFOperations:
             # Get original file size
             original_size = pdf_path.stat().st_size / (1024 * 1024)
             
-            # Open and compress PDF using pikepdf
-            with pikepdf.open(pdf_path) as pdf:
-                # Save with compression settings
-                pdf.save(
-                    output_path,
-                    compress_streams=True,
-                    stream_decode_level=pikepdf.StreamDecodeLevel.generalized,
-                    object_stream_mode=pikepdf.ObjectStreamMode.generate
+            # Get quality setting from config
+            gs_quality = config.COMPRESSION_LEVELS[quality]
+            
+            # Try Ghostscript compression first (most effective)
+            try:
+                gs_command = [
+                    'gs',
+                    '-sDEVICE=pdfwrite',
+                    '-dCompatibilityLevel=1.4',
+                    f'-dPDFSETTINGS={gs_quality}',
+                    '-dNOPAUSE',
+                    '-dQUIET',
+                    '-dBATCH',
+                    f'-sOutputFile={output_path}',
+                    str(pdf_path)
+                ]
+                
+                result = subprocess.run(
+                    gs_command,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minutes timeout
                 )
-            
-            # Get compressed file size
-            compressed_size = output_path.stat().st_size / (1024 * 1024)
-            
-            return True, original_size, compressed_size
+                
+                if result.returncode == 0 and output_path.exists():
+                    # Ghostscript compression successful
+                    compressed_size = output_path.stat().st_size / (1024 * 1024)
+                    return True, original_size, compressed_size
+                else:
+                    # Ghostscript failed, fall back to pikepdf
+                    raise Exception("Ghostscript compression failed")
+                    
+            except (FileNotFoundError, subprocess.TimeoutExpired, Exception) as e:
+                # Ghostscript not available or failed, use pikepdf as fallback
+                print(f"Ghostscript compression failed: {e}, falling back to pikepdf")
+                
+                with pikepdf.open(pdf_path) as pdf:
+                    # Remove unused objects and compress
+                    pdf.remove_unreferenced_resources()
+                    
+                    # Save with compression settings
+                    pdf.save(
+                        output_path,
+                        compress_streams=True,
+                        stream_decode_level=pikepdf.StreamDecodeLevel.generalized,
+                        object_stream_mode=pikepdf.ObjectStreamMode.generate,
+                        recompress_flate=True
+                    )
+                
+                compressed_size = output_path.stat().st_size / (1024 * 1024)
+                return True, original_size, compressed_size
         
         except Exception as e:
             print(f"Error compressing PDF: {e}")
