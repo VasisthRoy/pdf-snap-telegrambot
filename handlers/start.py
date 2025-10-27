@@ -50,7 +50,6 @@ I'm <b>{config.BOT_NAME}</b> - Your free PDF manipulation assistant! 🎉
 /help - Detailed help and examples
 /about - Bot information
 /cancel - Cancel current operation
-/stats - View bot usage statistics (admin only)
 
 💁🏻‍♀️ For Official Support, Visit @SnapBotHub
 
