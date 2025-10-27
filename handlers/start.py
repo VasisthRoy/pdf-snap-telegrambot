@@ -7,6 +7,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 import config
+from utils import analytics
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -18,6 +19,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         context: Telegram context object
     """
     user_name = update.effective_user.first_name
+    
+    # Track user activity
+    analytics.track_user(update.effective_user, 'start')
     
     welcome_message = f"""
 👋 <b>Welcome {user_name}!</b>
@@ -46,6 +50,7 @@ I'm <b>{config.BOT_NAME}</b> - Your free PDF manipulation assistant! 🎉
 /help - Detailed help and examples
 /about - Bot information
 /cancel - Cancel current operation
+/stats - View bot usage statistics (admin only)
 
 💁🏻‍♀️ For Official Support, Visit @SnapBotHub
 
@@ -70,6 +75,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         update: Telegram update object
         context: Telegram context object
     """
+    # Track user activity
+    analytics.track_user(update.effective_user, 'help')
+    
     help_message = """
 📚 <b>Detailed Help Guide</b>
 
@@ -259,6 +267,9 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         update: Telegram update object
         context: Telegram context object
     """
+    # Track user activity
+    analytics.track_user(update.effective_user, 'about')
+    
     bot_info = config.get_bot_info()
     
     about_message = f"""
@@ -330,6 +341,9 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     user_id = update.effective_user.id
     
+    # Track user activity
+    analytics.track_user(update.effective_user, 'cancel')
+    
     # Clean up user's temporary files
     file_manager.cleanup_user_files(user_id)
     
@@ -340,5 +354,87 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "✅ Operation cancelled!\n\n"
         "All temporary files have been deleted.\n"
         "You can start a new operation anytime. 🔄",
+        parse_mode='HTML'
+    )
+
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handle /stats command - Show bot usage statistics (admin only).
+    
+    Args:
+        update: Telegram update object
+        context: Telegram context object
+    """
+    user_id = update.effective_user.id
+    
+    # Check if user is admin
+    if user_id not in config.ADMIN_USER_IDS:
+        await update.message.reply_text(
+            "⚠️ This command is only available to bot administrators.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Get statistics
+    stats = analytics.get_statistics()
+    
+    # Format today's users
+    today_users_text = ""
+    if stats['today_users']:
+        today_users_text = "\n".join([
+            f"• {user['name']} (@{user['username'] or 'N/A'}) - {user['operations']} ops"
+            for user in stats['today_users']
+        ])
+    else:
+        today_users_text = "No users today yet."
+    
+    # Format all-time top users
+    top_users_text = ""
+    if stats['top_users']:
+        top_users_text = "\n".join([
+            f"{i+1}. {user['name']} (@{user['username'] or 'N/A'}) - {user['operations']} ops"
+            for i, user in enumerate(stats['top_users'][:10])
+        ])
+    else:
+        top_users_text = "No data yet."
+    
+    stats_message = f"""
+📊 <b>Bot Usage Statistics</b>
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>📅 TODAY'S STATS</b>
+- Unique Users: {stats['today_unique_users']}
+- Total Operations: {stats['today_operations']}
+
+<b>👥 Today's Users:</b>
+{today_users_text}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>📈 ALL-TIME STATS</b>
+- Total Unique Users: {stats['total_unique_users']}
+- Total Operations: {stats['total_operations']}
+
+<b>🏆 Top 10 Users:</b>
+{top_users_text}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>🔧 Operations Breakdown:</b>
+- Merge: {stats['operations_by_type'].get('merge', 0)}
+- Split: {stats['operations_by_type'].get('split', 0)}
+- Compress: {stats['operations_by_type'].get('compress', 0)}
+- PDF to Images: {stats['operations_by_type'].get('toimage', 0)}
+- Images to PDF: {stats['operations_by_type'].get('topdf', 0)}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+Last updated: {stats['last_updated']}
+"""
+    
+    await update.message.reply_text(
+        stats_message,
         parse_mode='HTML'
     )

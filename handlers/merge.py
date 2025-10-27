@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ChatAction
 
-from utils import file_manager, pdf_ops
+from utils import file_manager, pdf_ops, analytics
 import config
 
 
@@ -20,6 +20,9 @@ async def merge_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         context: Telegram context object
     """
     user_id = update.effective_user.id
+    
+    # Track user activity
+    analytics.track_user(update.effective_user, 'merge')
     
     # Check if user has uploaded PDF files
     pdf_files = context.user_data.get('pdf_files', [])

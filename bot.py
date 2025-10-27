@@ -39,6 +39,7 @@ from handlers import (
     handle_pdf_file,
     handle_image_file
 )
+from handlers.start import stats_command
 from utils import cleanup_scheduler
 
 # Import system check
@@ -102,7 +103,8 @@ async def post_init(application: Application) -> None:
         ("toimage", "Convert PDF pages to images"),
         ("topdf", "Convert images to PDF"),
         ("cancel", "Cancel current operation"),
-        ("about", "Bot information and credits")
+        ("about", "Bot information and credits"),
+        ("stats", "View usage statistics (admin only)")
     ]
     
     await application.bot.set_my_commands(commands)
@@ -145,6 +147,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("about", about_command))
     application.add_handler(CommandHandler("cancel", cancel_command))
+    application.add_handler(CommandHandler("stats", stats_command))
     
     # PDF operation handlers
     application.add_handler(CommandHandler("merge", merge_command))

@@ -10,6 +10,13 @@ from typing import Final
 # Bot Configuration
 BOT_TOKEN: Final[str] = os.getenv("BOT_TOKEN", "")
 
+# Admin User IDs (comma-separated in environment variable)
+ADMIN_USER_IDS: Final[set] = set(
+    int(uid.strip()) 
+    for uid in os.getenv("ADMIN_USER_IDS", "").split(",") 
+    if uid.strip().isdigit()
+)
+
 # File Size Limits (in bytes)
 MAX_FILE_SIZE: Final[int] = 50 * 1024 * 1024  # 50MB (Telegram limit)
 MAX_MERGE_FILES: Final[int] = 20  # Maximum files to merge at once
@@ -45,7 +52,7 @@ DEVELOPER: Final[str] = "A Random Dev"
 GITHUB_REPO: Final[str] = "https://github.com/yourusername/pdf-telegram-bot"
 
 # Feature Flags
-ENABLE_ANALYTICS: Final[bool] = False  # For future implementation
+ENABLE_ANALYTICS: Final[bool] = True
 ENABLE_RATE_LIMITING: Final[bool] = True
 ENABLE_ADMIN_PANEL: Final[bool] = False  # For future implementation
 
@@ -67,6 +74,10 @@ def validate_config() -> bool:
         except Exception as e:
             print(f"❌ ERROR: Cannot create temp directory: {e}")
             return False
+    
+    if not ADMIN_USER_IDS:
+        print("⚠️  WARNING: No admin users configured. /stats command will not work.")
+        print("   Set ADMIN_USER_IDS in your .env file (comma-separated user IDs)")
     
     return True
 
