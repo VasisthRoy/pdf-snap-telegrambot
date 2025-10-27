@@ -270,6 +270,13 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 ━━━━━━━━━━━━━━━━━━━━━
 
+**📊 System Info:**
+• Max file size: 50MB
+• Max PDFs to merge: 20
+• Max images to convert: 50
+• Supported formats: PDF, JPG, PNG, GIF, BMP, TIFF, WEBP
+━━━━━━━━━━━━━━━━━━━━━
+
 **✨ Features:**
 • Merge multiple PDFs
 • Split PDFs by page range
@@ -283,10 +290,6 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 • Secure temporary storage
 • No tracking or analytics
 
-**⚡ Performance:**
-• Fast processing
-• Concurrent user support
-• Optimized for efficiency
 
 **💰 Cost:**
 • Completely FREE
@@ -295,27 +298,13 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 ━━━━━━━━━━━━━━━━━━━━━
 
-**🛠️ Technology:**
-• Python 3.9+
-• python-telegram-bot
-• PyPDF2 & pikepdf
-• pdf2image & Pillow
-
 **👨‍💻 Developer:**
 {bot_info['developer']}
 
-
 **🐛 Report Issues:**
 Found a bug? Have suggestions?
-Visit the GitHub repo above!
+Reach me out at https://t.me/snapbothub
 
-━━━━━━━━━━━━━━━━━━━━━
-
-**📊 System Info:**
-• Max file size: 50MB
-• Max PDFs to merge: 20
-• Max images to convert: 50
-• Supported formats: PDF, JPG, PNG, GIF, BMP, TIFF, WEBP
 
 ━━━━━━━━━━━━━━━━━━━━━
 
