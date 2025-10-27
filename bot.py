@@ -8,9 +8,11 @@ Features:
 - Compress PDFs
 - Convert PDF to images
 - Convert images to PDF
+- Add password protection to PDFs
+- Remove password protection from PDFs
 
 Author: A Random Dev
-Version: 1.0.0
+Version: 1.1.0
 """
 
 import asyncio
@@ -37,7 +39,9 @@ from handlers import (
     pdf_to_images_command,
     images_to_pdf_command,
     handle_pdf_file,
-    handle_image_file
+    handle_image_file,
+    protect_command,
+    unlock_command
 )
 from handlers.start import daily_stats_command, weekly_stats_command
 from utils import cleanup_scheduler
@@ -103,6 +107,8 @@ async def post_init(application: Application) -> None:
         ("compress", "Reduce PDF file size"),
         ("toimage", "Convert PDF pages to images"),
         ("topdf", "Convert images to PDF"),
+        ("protect", "Add password protection to PDF"),
+        ("unlock", "Remove password protection from PDF"),
         ("cancel", "Cancel current operation"),
         ("about", "Bot information and credits")
     ]
@@ -156,6 +162,10 @@ def main() -> None:
     application.add_handler(CommandHandler("merge", merge_command))
     application.add_handler(CommandHandler("split", split_command))
     application.add_handler(CommandHandler("compress", compress_command))
+    
+    # Password protection handlers
+    application.add_handler(CommandHandler("protect", protect_command))
+    application.add_handler(CommandHandler("unlock", unlock_command))
     
     # Conversion handlers (multiple command aliases)
     application.add_handler(CommandHandler("toimage", pdf_to_images_command))

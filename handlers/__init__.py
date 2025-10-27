@@ -8,6 +8,7 @@ from .merge import merge_command, handle_pdf_file
 from .split import split_command
 from .compress import compress_command
 from .convert import pdf_to_images_command, images_to_pdf_command, handle_image_file
+from .password import protect_command, unlock_command
 
 __all__ = [
     'start_command',
@@ -20,5 +21,7 @@ __all__ = [
     'pdf_to_images_command',
     'images_to_pdf_command',
     'handle_pdf_file',
-    'handle_image_file'
+    'handle_image_file',
+    'protect_command',
+    'unlock_command'
 ]

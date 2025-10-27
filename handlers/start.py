@@ -34,6 +34,8 @@ I'm <b>{config.BOT_NAME}</b> - Your free PDF manipulation assistant! 🎉
 - 🗜️ Compress PDFs to reduce file size
 - 🖼️ Convert PDFs to images
 - 📄 Convert images to PDF
+- 🔒 Add password protection to PDFs   
+- 🔓 Remove password protection from PDFs
 
 ⚡ <b>Quick Start:</b>
 1. Send me PDF files or images
@@ -47,6 +49,8 @@ I'm <b>{config.BOT_NAME}</b> - Your free PDF manipulation assistant! 🎉
 /compress - Reduce PDF file size
 /toimage - Convert PDF to images
 /topdf - Convert images to PDF
+/protect - Add password to PDF       
+/unlock - Remove password from PDF   
 /help - Detailed help and examples
 /about - Bot information
 /cancel - Cancel current operation
@@ -186,6 +190,39 @@ Result: combined.pdf (3 pages)
 
 ━━━━━━━━━━━━━━━━━━━━━
 
+<b>6️⃣ PROTECT PDF (Add Password)</b>
+Add password protection to secure your PDF.
+
+<b>How to use:</b>
+- Send 1 PDF file
+- Type: /protect &lt;password&gt;
+- Receive password-protected PDF
+
+<b>Examples:</b>
+- /protect MySecretPass123
+- /protect Company@2024!
+
+<b>Security:</b>
+- AES-256 encryption
+- Password 4-128 characters
+- Your password message is auto-deleted
+
+━━━━━━━━━━━━━━━━━━━━━
+
+<b>7️⃣ UNLOCK PDF (Remove Password)</b>
+Remove password protection from a PDF.
+
+<b>How to use:</b>
+- Send password-protected PDF
+- Type: /unlock &lt;password&gt;
+- Receive unlocked PDF
+
+<b>Requirements:</b>
+- Must know correct password
+- Password is case-sensitive
+
+━━━━━━━━━━━━━━━━━━━━━
+
 <b>⚠️ IMPORTANT NOTES:</b>
 
 <b>File Size Limits:</b>
@@ -294,6 +331,8 @@ async def about_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 - Compress PDFs efficiently
 - Convert PDF to images
 - Convert images to PDF
+- Add password protection
+- Remove password protection
 
 <b>🔒 Privacy:</b>
 - No data storage

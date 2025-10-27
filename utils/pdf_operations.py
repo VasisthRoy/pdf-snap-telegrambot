@@ -1,6 +1,6 @@
 """
 PDF operation utilities for PDF Telegram Bot.
-Handles PDF merging, splitting, compression, and format conversions.
+Handles PDF merging, splitting, compression, format conversions, and password protection.
 """
 
 import io
@@ -494,6 +494,120 @@ class PDFOperations:
         
         except Exception as e:
             print(f"Error converting images to PDF: {e}")
+            raise
+    
+    @staticmethod
+    def protect_pdf(
+        pdf_path: Path,
+        output_path: Path,
+        password: str,
+        owner_password: Optional[str] = None
+    ) -> bool:
+        """
+        Add password protection to a PDF file.
+        
+        Args:
+            pdf_path: Path to source PDF
+            output_path: Path where protected PDF should be saved
+            password: User password (required to open the PDF)
+            owner_password: Owner password (for permissions, optional)
+            
+        Returns:
+            bool: True if successful
+            
+        Raises:
+            FileNotFoundError: If PDF not found
+            ValueError: If PDF is already encrypted
+            Exception: If protection fails
+        """
+        if not pdf_path.exists():
+            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+        
+        try:
+            # Open PDF with pikepdf
+            with pikepdf.open(pdf_path) as pdf:
+                # Check if already encrypted
+                if pdf.is_encrypted:
+                    raise ValueError("PDF is already password-protected")
+                
+                # If no owner password provided, use same as user password
+                if owner_password is None:
+                    owner_password = password
+                
+                # Save with encryption
+                pdf.save(
+                    output_path,
+                    encryption=pikepdf.Encryption(
+                        owner=owner_password,
+                        user=password,
+                        R=6,  # Use AES-256 encryption (most secure)
+                        allow=pikepdf.Permissions(
+                            accessibility=True,
+                            extract=True,
+                            modify_annotation=True,
+                            modify_assembly=False,
+                            modify_form=True,
+                            modify_other=False,
+                            print_lowres=True,
+                            print_highres=True
+                        )
+                    )
+                )
+            
+            return True
+        
+        except Exception as e:
+            print(f"Error protecting PDF: {e}")
+            raise
+    
+    @staticmethod
+    def unlock_pdf(
+        pdf_path: Path,
+        output_path: Path,
+        password: str
+    ) -> bool:
+        """
+        Remove password protection from a PDF file.
+        
+        Args:
+            pdf_path: Path to source PDF (password-protected)
+            output_path: Path where unlocked PDF should be saved
+            password: Password to unlock the PDF
+            
+        Returns:
+            bool: True if successful
+            
+        Raises:
+            FileNotFoundError: If PDF not found
+            ValueError: If password is incorrect or PDF is not encrypted
+            Exception: If unlock operation fails
+        """
+        if not pdf_path.exists():
+            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
+        
+        try:
+            # Try to open PDF with password
+            try:
+                with pikepdf.open(pdf_path, password=password) as pdf:
+                    # Save without encryption
+                    pdf.save(output_path)
+                return True
+            
+            except pikepdf.PasswordError:
+                raise ValueError("Incorrect password")
+            
+            except pikepdf.PdfError as e:
+                if "not encrypted" in str(e).lower():
+                    raise ValueError("PDF is not password-protected")
+                else:
+                    raise
+        
+        except ValueError:
+            # Re-raise ValueError (incorrect password or not encrypted)
+            raise
+        
+        except Exception as e:
+            print(f"Error unlocking PDF: {e}")
             raise
     
     @staticmethod
