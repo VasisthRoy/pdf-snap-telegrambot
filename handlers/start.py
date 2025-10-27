@@ -35,6 +35,7 @@ I'm <b>{config.BOT_NAME}</b> - Your free PDF manipulation assistant! 🎉
 1. Send me PDF files or images
 2. Use commands below to process them
 3. Get your result instantly!
+4. Click on any command to learn more about it.
 
 📋 <b>Available Commands:</b>
 /merge - Merge multiple PDFs into one
@@ -45,6 +46,8 @@ I'm <b>{config.BOT_NAME}</b> - Your free PDF manipulation assistant! 🎉
 /help - Detailed help and examples
 /about - Bot information
 /cancel - Cancel current operation
+
+💁🏻‍♀️ For Official Support, Visit @SnapBotHub
 
 💡 <b>Tip:</b> Send me files first, then use the commands!
 
