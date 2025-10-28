@@ -440,7 +440,7 @@ class Analytics:
                 'weeks': weeks,
                 'overall_top_3': overall_top_3,
                 'total_operations_by_type': total_operations_by_type,
-                'last_updated': datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
         
         except Exception as e:
@@ -459,7 +459,7 @@ class Analytics:
             'operations_by_type': {},
             'top_3_users': [],
             'recent_10_users': [],
-            'last_updated': datetime.now()).strftime('%Y-%m-%d %H:%M:%S')
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
     
     def _empty_weekly_stats(self) -> dict:
