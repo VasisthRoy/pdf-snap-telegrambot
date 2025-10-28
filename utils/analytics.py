@@ -8,6 +8,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2 import pool
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo 
 from typing import Dict, List, Optional
 from telegram import User
 import calendar
@@ -141,7 +142,7 @@ class Analytics:
                 return
             
             cursor = conn.cursor()
-            today = datetime.now().date()
+            today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
             
             # Insert or update user
             cursor.execute("""
@@ -192,8 +193,8 @@ class Analytics:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             
             # Get today's date range (start and end of day)
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+            today_start = datetime.now(ZoneInfo("Asia/Kolkata")).replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = datetime.now(ZoneInfo("Asia/Kolkata")).replace(hour=23, minute=59, second=59, microsecond=999999)
             
             # Today's unique users
             cursor.execute("""
@@ -274,7 +275,7 @@ class Analytics:
                 'operations_by_type': operations_by_type,
                 'top_3_users': top_3_users,
                 'recent_10_users': recent_10_users,
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'last_updated': datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
             }
         
         except Exception as e:
@@ -303,7 +304,7 @@ class Analytics:
                 return self._empty_weekly_stats()
             
             cursor = conn.cursor(cursor_factory=RealDictCursor)
-            now = datetime.now()
+            now = datetime.now(ZoneInfo("Asia/Kolkata"))
             
             # Get first and last day of current month
             first_day = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -440,7 +441,7 @@ class Analytics:
                 'weeks': weeks,
                 'overall_top_3': overall_top_3,
                 'total_operations_by_type': total_operations_by_type,
-                'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                'last_updated': datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
             }
         
         except Exception as e:
@@ -453,18 +454,18 @@ class Analytics:
     def _empty_daily_stats(self) -> dict:
         """Return empty daily statistics structure."""
         return {
-            'date': datetime.now().strftime('%Y-%m-%d'),
+            'date': datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d'),
             'unique_users': 0,
             'total_operations': 0,
             'operations_by_type': {},
             'top_3_users': [],
             'recent_10_users': [],
-            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'last_updated': datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
         }
     
     def _empty_weekly_stats(self) -> dict:
         """Return empty weekly statistics structure."""
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("Asia/Kolkata"))
         return {
             'month_name': now.strftime('%B'),
             'year': now.year,
@@ -473,7 +474,7 @@ class Analytics:
             'weeks': [],
             'overall_top_3': [],
             'total_operations_by_type': {},
-            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'last_updated': datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
         }
     
     def get_user_info(self, user_id: int) -> Optional[dict]:
@@ -530,7 +531,7 @@ class Analytics:
                 return
             
             cursor = conn.cursor()
-            cutoff_date = datetime.now() - timedelta(days=days)
+            cutoff_date = datetime.now(ZoneInfo("Asia/Kolkata")) - timedelta(days=days)
             
             cursor.execute("""
                 DELETE FROM operations
