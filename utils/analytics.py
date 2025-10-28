@@ -1,11 +1,12 @@
 """
 Analytics utilities for PDF Telegram Bot.
-Tracks user activity and generates statistics using PostgreSQL.
+Tracks user activity and generates statistics using PostgreSQL (Neon DB).
 """
 
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from psycopg2 import pool
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from telegram import User
@@ -13,33 +14,55 @@ import calendar
 
 
 class Analytics:
-    """Handles user activity tracking and statistics with PostgreSQL."""
+    """Handles user activity tracking and statistics with PostgreSQL (Neon DB)."""
     
     def __init__(self):
-        """Initialize analytics with PostgreSQL connection."""
+        """Initialize analytics with PostgreSQL connection pool."""
         self.database_url = os.getenv('DATABASE_URL')
         if not self.database_url:
             print("⚠️  WARNING: DATABASE_URL not found. Analytics will be disabled.")
             self.enabled = False
+            self.connection_pool = None
         else:
             self.enabled = True
-            self._init_database()
+            try:
+                # Create connection pool for better performance
+                self.connection_pool = psycopg2.pool.SimpleConnectionPool(
+                    1, 10,  # min and max connections
+                    self.database_url,
+                    sslmode='require'  # Neon requires SSL
+                )
+                print("✅ Database connection pool created successfully")
+                self._init_database()
+            except Exception as e:
+                print(f"❌ Error creating connection pool: {e}")
+                self.enabled = False
+                self.connection_pool = None
     
     def _get_connection(self):
-        """Get database connection."""
-        if not self.enabled:
+        """Get database connection from pool."""
+        if not self.enabled or not self.connection_pool:
             return None
         try:
-            return psycopg2.connect(self.database_url)
+            return self.connection_pool.getconn()
         except Exception as e:
-            print(f"Error connecting to database: {e}")
+            print(f"Error getting connection from pool: {e}")
             return None
+    
+    def _return_connection(self, conn):
+        """Return connection to pool."""
+        if conn and self.connection_pool:
+            try:
+                self.connection_pool.putconn(conn)
+            except Exception as e:
+                print(f"Error returning connection to pool: {e}")
     
     def _init_database(self) -> None:
         """Initialize database tables if they don't exist."""
         if not self.enabled:
             return
         
+        conn = None
         try:
             conn = self._get_connection()
             if not conn:
@@ -71,7 +94,7 @@ class Analytics:
                 )
             """)
             
-            # Create index for faster queries
+            # Create indexes for faster queries
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_operations_timestamp 
                 ON operations(timestamp)
@@ -82,14 +105,23 @@ class Analytics:
                 ON operations(user_id)
             """)
             
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_operations_type 
+                ON operations(operation_type)
+            """)
+            
             conn.commit()
             cursor.close()
-            conn.close()
             
             print("✅ Database tables initialized successfully")
         
         except Exception as e:
             print(f"Error initializing database: {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                self._return_connection(conn)
     
     def track_user(self, user: User, operation: str) -> None:
         """
@@ -102,6 +134,7 @@ class Analytics:
         if not self.enabled:
             return
         
+        conn = None
         try:
             conn = self._get_connection()
             if not conn:
@@ -131,10 +164,14 @@ class Analytics:
             
             conn.commit()
             cursor.close()
-            conn.close()
         
         except Exception as e:
             print(f"Error tracking user: {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                self._return_connection(conn)
     
     def get_daily_statistics(self) -> dict:
         """
@@ -146,6 +183,7 @@ class Analytics:
         if not self.enabled:
             return self._empty_daily_stats()
         
+        conn = None
         try:
             conn = self._get_connection()
             if not conn:
@@ -228,7 +266,6 @@ class Analytics:
                 })
             
             cursor.close()
-            conn.close()
             
             return {
                 'date': today_start.strftime('%Y-%m-%d'),
@@ -245,6 +282,9 @@ class Analytics:
             import traceback
             traceback.print_exc()
             return self._empty_daily_stats()
+        finally:
+            if conn:
+                self._return_connection(conn)
     
     def get_weekly_statistics(self) -> dict:
         """
@@ -256,6 +296,7 @@ class Analytics:
         if not self.enabled:
             return self._empty_weekly_stats()
         
+        conn = None
         try:
             conn = self._get_connection()
             if not conn:
@@ -390,7 +431,6 @@ class Analytics:
             total_operations_by_type = {row['operation_type']: row['count'] for row in cursor.fetchall()}
             
             cursor.close()
-            conn.close()
             
             return {
                 'month_name': now.strftime('%B'),
@@ -406,6 +446,9 @@ class Analytics:
         except Exception as e:
             print(f"Error getting weekly statistics: {e}")
             return self._empty_weekly_stats()
+        finally:
+            if conn:
+                self._return_connection(conn)
     
     def _empty_daily_stats(self) -> dict:
         """Return empty daily statistics structure."""
@@ -446,6 +489,7 @@ class Analytics:
         if not self.enabled:
             return None
         
+        conn = None
         try:
             conn = self._get_connection()
             if not conn:
@@ -459,13 +503,15 @@ class Analytics:
             
             result = cursor.fetchone()
             cursor.close()
-            conn.close()
             
             return dict(result) if result else None
         
         except Exception as e:
             print(f"Error getting user info: {e}")
             return None
+        finally:
+            if conn:
+                self._return_connection(conn)
     
     def cleanup_old_data(self, days: int = 90) -> None:
         """
@@ -477,6 +523,7 @@ class Analytics:
         if not self.enabled:
             return
         
+        conn = None
         try:
             conn = self._get_connection()
             if not conn:
@@ -493,12 +540,25 @@ class Analytics:
             deleted_count = cursor.rowcount
             conn.commit()
             cursor.close()
-            conn.close()
             
             print(f"Cleaned up {deleted_count} old operation records")
         
         except Exception as e:
             print(f"Error cleaning up old data: {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                self._return_connection(conn)
+    
+    def __del__(self):
+        """Close connection pool when object is destroyed."""
+        if self.connection_pool:
+            try:
+                self.connection_pool.closeall()
+                print("✅ Database connection pool closed")
+            except Exception as e:
+                print(f"Error closing connection pool: {e}")
 
 
 # Global analytics instance
