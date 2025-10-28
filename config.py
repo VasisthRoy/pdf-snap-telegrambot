@@ -1,6 +1,7 @@
 """
 Configuration management for PDF Telegram Bot.
 Handles environment variables and bot settings.
+Supports multiple database providers: Neon, Supabase, ElephantSQL, Railway PostgreSQL
 """
 
 import os
@@ -16,6 +17,15 @@ ADMIN_USER_IDS: Final[set] = set(
     for uid in os.getenv("ADMIN_USER_IDS", "").split(",") 
     if uid.strip().isdigit()
 )
+
+# Database Configuration
+# Supports multiple providers:
+# - Neon PostgreSQL: https://neon.tech
+# - Supabase: https://supabase.com
+# - ElephantSQL: https://elephantsql.com
+# - Railway PostgreSQL: railway.app
+# - Or set to empty string to disable analytics
+DATABASE_URL: Final[str] = os.getenv("DATABASE_URL", "")
 
 # File Size Limits (in bytes)
 MAX_FILE_SIZE: Final[int] = 50 * 1024 * 1024  # 50MB (Telegram limit)
@@ -46,7 +56,7 @@ SUPPORTED_PDF_FORMAT: Final[str] = '.pdf'
 
 # Bot Information
 BOT_NAME: Final[str] = "PDF Tools Bot"
-BOT_VERSION: Final[str] = "1.0.0"
+BOT_VERSION: Final[str] = "1.1.0"
 BOT_DESCRIPTION: Final[str] = "Free PDF manipulation tools in Telegram"
 DEVELOPER: Final[str] = "A Random Dev"
 GITHUB_REPO: Final[str] = "https://github.com/yourusername/pdf-telegram-bot"
@@ -75,8 +85,18 @@ def validate_config() -> bool:
             print(f"❌ ERROR: Cannot create temp directory: {e}")
             return False
     
+    if not DATABASE_URL:
+        print("⚠️  WARNING: DATABASE_URL not set. Analytics will be disabled.")
+        print("   To enable analytics, add DATABASE_URL to your environment variables.")
+        print("")
+        print("   📊 Recommended free database providers:")
+        print("   1. Neon (https://neon.tech) - 0.5GB free")
+        print("   2. Supabase (https://supabase.com) - 500MB free")
+        print("   3. ElephantSQL (https://elephantsql.com) - 20MB free")
+        print("")
+    
     if not ADMIN_USER_IDS:
-        print("⚠️  WARNING: No admin users configured. /stats command will not work.")
+        print("⚠️  WARNING: No admin users configured. /dailystats and /weeklystats commands will not work.")
         print("   Set ADMIN_USER_IDS in your .env file (comma-separated user IDs)")
     
     return True
